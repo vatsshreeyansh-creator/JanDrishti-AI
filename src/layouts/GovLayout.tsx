@@ -3,77 +3,122 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Map as MapIcon, 
+  Activity, 
   Target, 
   DollarSign, 
-  ShieldAlert,
+  BarChart3, 
+  AlertTriangle,
   ArrowLeft,
-  Activity,
-  BarChart,
-  AlertTriangle
+  ShieldAlert,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 
 const Sidebar = () => {
   const location = useLocation();
   
   const navItems = [
-    { path: '/gov', label: 'Live Overview', icon: LayoutDashboard },
-    { path: '/gov/map', label: 'Spatial Intelligence', icon: MapIcon },
-    { path: '/gov/hotspots', label: 'Hotspot List', icon: Activity },
-    { path: '/gov/recommendations', label: 'AI Recommendations', icon: Target },
-    { path: '/gov/budget', label: 'Budget Simulator', icon: DollarSign },
-    { path: '/gov/impact', label: 'Impact Tracker', icon: BarChart },
-    { path: '/gov/risks', label: 'Risk Alerts', icon: AlertTriangle },
+    { path: '/gov', label: 'Civic Command Center', icon: LayoutDashboard },
+    { path: '/gov/map', label: 'Geospatial Hotspots', icon: MapIcon },
+    { path: '/gov/hotspots', label: 'Hotspot Intelligence', icon: Activity },
+    { path: '/gov/recommendations', label: 'Multi-Voice Clusters', icon: Target },
+    { path: '/gov/budget', label: 'Capex Simulator', icon: DollarSign },
+    { path: '/gov/impact', label: 'Impact & SLA Audit', icon: BarChart3 },
+    { path: '/gov/risks', label: 'Predictive Risk Alerts', icon: AlertTriangle },
   ];
 
   return (
-    <div className="w-64 bg-slate-950 text-slate-300 h-full flex flex-col border-r border-slate-800">
-      <div className="p-6">
-        <Link to="/" className="inline-flex items-center text-xs text-slate-500 hover:text-white mb-6 transition-colors font-medium">
-          <ArrowLeft className="w-3 h-3 mr-1" /> Switch Portal
-        </Link>
-        <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2 mb-1">
-          JanDrishti <span className="bg-brand-500/20 text-brand-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-widest border border-brand-500/30">Gov</span>
-        </h1>
-        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-1">
-          <Activity className="w-3 h-3 text-emerald-500" /> Operational Intelligence
-        </p>
-      </div>
-      <nav className="flex-1 px-4 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || (location.pathname === '/gov/' && item.path === '/gov');
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-sm ${
-                isActive ? 'bg-slate-800 text-white font-bold border border-slate-700' : 'hover:bg-slate-900 hover:text-white text-slate-400 font-medium'
-              }`}
-            >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-brand-400' : ''}`} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="p-4 border-t border-slate-900">
-        <div className="bg-rose-950/30 border border-rose-900/50 rounded-lg p-3 text-xs flex items-start gap-2">
-           <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-           <p className="text-rose-200/70">
-             <strong className="text-rose-400 block mb-1">DEMO MODE</strong>
-             Using synthetic demonstration data. Connected to local Python backend.
-           </p>
+    <aside className="w-[280px] bg-[#151d19] border-r border-[#27342c] h-full flex flex-col justify-between py-4 shadow-2xl z-30 shrink-0">
+      <div className="flex flex-col gap-4 px-4">
+        {/* Brand Header */}
+        <div className="flex items-center gap-3 px-1 py-1">
+          <div className="h-10 w-10 rounded-lg bg-[#5da673]/20 border border-[#5da673]/40 flex items-center justify-center text-[#8cd7a0] shadow-[0_0_12px_rgba(93,166,115,0.2)]">
+            <Sparkles className="w-5 h-5 text-[#8cd7a0]" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-display text-sm text-[#e8ede9] font-bold uppercase tracking-wider">Jan Drishti AI</span>
+            <span className="font-mono text-[10px] text-[#8cd7a0] tracking-wider uppercase font-semibold">GovOS Sovereign Rail</span>
+          </div>
         </div>
+
+        {/* Authority Node Card */}
+        <div className="bg-[#1a241f] border border-[#27342c] rounded-xl p-3 flex flex-col gap-1.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[#9ab0a2]">Authority Node</span>
+            <span className="flex items-center gap-1 font-mono text-[10px] text-[#8cd7a0] bg-[#5da673]/10 px-1.5 py-0.5 rounded border border-[#5da673]/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#5da673] animate-pulse"></span>
+              LIVE
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[#e8ede9]">
+            <span className="font-sans text-xs font-semibold truncate">Gaya District Magistrate</span>
+            <CheckCircle2 className="w-4 h-4 text-[#8cd7a0] shrink-0" />
+          </div>
+          <div className="text-[10px] font-mono text-[#9ab0a2] truncate">Jurisdiction: IN-BH-GAYA-04</div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-col gap-1.5">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (location.pathname === '/gov/' && item.path === '/gov');
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  isActive
+                    ? 'bg-[#5da673] text-[#00381a] font-bold shadow-[0_0_15px_rgba(93,166,115,0.25)]'
+                    : 'text-[#9ab0a2] hover:bg-[#1a241f] hover:text-[#e8ede9]'
+                }`}
+              >
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#00381a]' : 'text-[#8cd7a0]'}`} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
-    </div>
+
+      {/* Footer Info & Switch Portal */}
+      <div className="px-4 space-y-3">
+        <div className="bg-[#1a241f] border border-[#27342c] rounded-lg p-2.5">
+          <div className="flex items-center justify-between text-[10px] font-mono text-[#9ab0a2] mb-1">
+            <span>TELEMETRY STREAM</span>
+            <span className="text-[#8cd7a0]">24.79°N, 85.00°E</span>
+          </div>
+          <div className="h-1 bg-[#27342c] rounded-full overflow-hidden">
+            <div className="h-full bg-[#5da673] w-3/4 rounded-full"></div>
+          </div>
+        </div>
+
+        <div className="bg-[#773208]/20 border border-[#d47a4c]/40 rounded-lg p-2.5 text-xs">
+          <div className="flex items-center gap-1.5 text-[#ffb693] font-bold text-[11px] mb-1">
+            <ShieldAlert className="w-3.5 h-3.5 text-[#ffb693] shrink-0" />
+            <span>OPERATIONAL DEMO</span>
+          </div>
+          <p className="text-[#ffb693]/70 text-[10px] leading-relaxed">
+            Connected to sovereign FastAPI backend. Real-time NLP vectorization enabled.
+          </p>
+        </div>
+
+        <Link 
+          to="/" 
+          className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-[#1a241f] hover:bg-[#242c27] text-xs font-mono uppercase tracking-wider text-[#9ab0a2] hover:text-[#e8ede9] border border-[#27342c] transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Switch Portal
+        </Link>
+      </div>
+    </aside>
   );
 };
 
 export const GovLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex h-screen overflow-hidden bg-slate-900 font-sans">
+  <div className="flex h-screen overflow-hidden bg-[#0d1511] text-[#e8ede9] font-sans antialiased">
     <Sidebar />
-    <div className="flex-1 flex flex-col overflow-hidden relative">
-      <main className="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
+    <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+      <main className="flex-1 overflow-y-auto p-6 md:p-8 relative custom-scrollbar bg-[#0d1511]">
         {children}
       </main>
     </div>

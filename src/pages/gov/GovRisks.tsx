@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchRisks } from '../../api/client';
-import { AlertTriangle, Loader2, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Loader2, ShieldAlert, Sparkles, MapPin, CheckCircle2 } from 'lucide-react';
 
 const GovRisks = () => {
   const [risks, setRisks] = useState<any[]>([]);
@@ -10,67 +10,128 @@ const GovRisks = () => {
     fetchRisks().then(data => {
       setRisks(data.sort((a: any, b: any) => b.risk_score - a.risk_score));
       setLoading(false);
+    }).catch(e => {
+      console.error(e);
+      setLoading(false);
     });
   }, []);
 
-  if (loading) return <div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>;
+  if (loading) {
+    return (
+      <div className="flex h-full min-h-[400px] items-center justify-center font-mono text-[#8cd7a0]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5da673] mr-3" />
+        <span>Evaluating Multi-Factor Infrastructure Risk Models...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 text-slate-200">
-      <header className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-          <AlertTriangle className="w-8 h-8 text-rose-500" />
-          Predictive Risk Alerts
-        </h1>
-        <p className="text-slate-400 mt-1">Prototype Risk Model: Identifying infrastructure failure vectors before they happen.</p>
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 font-sans pb-12">
+      
+      {/* Top Header Strip */}
+      <header className="border-b border-[#27342c] pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 rounded-full bg-[#773208]/30 border border-[#ffb693]/30 text-[#ffb693] font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 font-bold">
+              <Sparkles className="w-3 h-3" />
+              ANOMALY DETECTION & PREDICTIVE MITIGATION
+            </span>
+            <span className="font-mono text-xs text-[#9ab0a2]">NODE BIHAR-IN-04</span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#e8ede9] flex items-center gap-2">
+            <AlertTriangle className="w-7 h-7 text-[#ffb693]" />
+            Predictive Infrastructure Risk Alerts
+          </h1>
+          <p className="text-xs sm:text-sm text-[#9ab0a2] mt-0.5 max-w-2xl">
+            Proactive failure forecasting: Identifying structural collapse and inundation vectors before disasters occur via multi-variable spatial analysis.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 font-mono text-xs text-[#8cd7a0] bg-[#151d19] border border-[#27342c] px-3.5 py-1.5 rounded-xl shrink-0">
+          <span>Vectors Tracked: <strong className="text-[#e8ede9]">{risks.length}</strong></span>
+          <span className="text-[#27342c]">|</span>
+          <span>Alert Severity: <strong className="text-[#ffb693]">CRITICAL</strong></span>
+        </div>
       </header>
 
+      {/* Grid of Risk Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {risks.map(risk => (
-          <div key={risk.id} className="bg-slate-900 border border-rose-900/50 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <ShieldAlert className="w-24 h-24 text-rose-500" />
-            </div>
-            
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-4">
-                <div className="text-rose-500 text-xs font-bold tracking-widest uppercase mb-1 bg-rose-500/10 px-2 py-1 rounded inline-block border border-rose-500/20">
+        {risks.map((risk) => (
+          <div 
+            key={risk.id} 
+            className="bg-[#151d19] border border-[#773208]/40 hover:border-[#ffb693]/60 rounded-2xl p-6 sm:p-7 shadow-xl relative overflow-hidden transition-all duration-200 flex flex-col justify-between"
+          >
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#ffb693]/5 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div>
+              {/* Card Header Strip */}
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <span className="text-[#ffb693] text-[10px] font-mono font-bold tracking-wider uppercase bg-[#773208]/30 px-2.5 py-1 rounded border border-[#ffb693]/40 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" />
                   HIGH INFRASTRUCTURE RISK
-                </div>
+                </span>
                 <div className="text-right">
-                  <div className="text-slate-500 text-[10px] font-bold uppercase mb-1">Risk Score</div>
-                  <div className="text-3xl font-extrabold text-rose-400">{risk.risk_score}/100</div>
+                  <div className="text-[10px] font-mono text-[#9ab0a2] uppercase">Composite Risk</div>
+                  <div className="text-2xl font-bold font-display text-[#ffb693]">
+                    {risk.risk_score}/100
+                  </div>
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold text-white mb-1">{risk.risk_type}</h2>
-              <div className="text-slate-400 text-sm flex items-center gap-2 mb-6 font-mono">
-                📍 {risk.location}
+              <h2 className="font-display text-xl font-bold text-[#e8ede9] mb-1">
+                {risk.risk_type}
+              </h2>
+
+              <div className="text-xs font-mono text-[#9ab0a2] flex items-center gap-1.5 mb-4">
+                <MapPin className="w-3.5 h-3.5 text-[#5da673]" /> {risk.location}
               </div>
 
-              <p className="text-slate-300 text-sm mb-6 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+              <p className="text-xs text-[#e8ede9] bg-[#1a241f] border border-[#27342c] p-3.5 rounded-xl leading-relaxed mb-4">
                 {risk.description}
               </p>
 
-              <div className="mb-6">
-                <h4 className="text-slate-500 text-xs font-bold uppercase mb-3">Model Factors</h4>
-                <div className="flex flex-wrap gap-2">
-                  {['Rainfall', 'Drainage', 'Historical Damage', 'Citizen Complaints', 'Population Vulnerability'].map(factor => (
-                    <span key={factor} className="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700">
+              {/* Model Factors */}
+              <div className="mb-4">
+                <span className="font-mono text-[10px] uppercase text-[#9ab0a2] block mb-2 font-bold">
+                  Predictive Model Vectors:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Monsoon Rainfall Matrix', 'Culvert Silt Drainage', 'Historical Ground Stress', 'Complaint Density Surge', 'Pop Vulnerability'].map((factor) => (
+                    <span 
+                      key={factor} 
+                      className="bg-[#1a241f] text-[#aacfb7] text-[10px] font-mono px-2 py-0.5 rounded border border-[#27342c]"
+                    >
                       {factor}
                     </span>
                   ))}
                 </div>
               </div>
-
-              <div className="bg-rose-950/30 border border-rose-900/50 rounded-xl p-4">
-                <h4 className="text-rose-400 text-xs font-bold uppercase mb-2">Recommendation</h4>
-                <p className="text-rose-200 text-sm">{risk.recommendation}</p>
-              </div>
             </div>
+
+            {/* Recommendation & Action Box */}
+            <div className="mt-4 pt-4 border-t border-[#27342c] space-y-3">
+              <div className="bg-[#773208]/20 border border-[#ffb693]/30 rounded-xl p-3.5">
+                <div className="text-[#ffb693] font-mono text-[10px] uppercase font-bold mb-1">
+                  AI Mitigating Recommendation
+                </div>
+                <p className="text-xs text-[#e8ede9] leading-relaxed">
+                  {risk.recommendation}
+                </p>
+              </div>
+
+              <button
+                onClick={() => alert(`Dispatched Pre-emptive Engineering Team to: ${risk.location}`)}
+                className="w-full bg-[#1a241f] hover:bg-[#242c27] text-[#8cd7a0] border border-[#5da673]/40 hover:border-[#5da673] py-2.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#5da673]" />
+                Dispatch Pre-emptive Field Triage
+              </button>
+            </div>
+
           </div>
         ))}
       </div>
+
     </div>
   );
 };

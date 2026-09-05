@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fetchHotspots } from '../../api/client';
-import { Layers, Users, Activity, Loader2 } from 'lucide-react';
+import { Layers, Users, Activity, Loader2, Sparkles, Filter } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const GovMap = () => {
   const [hotspots, setHotspots] = useState<any[]>([]);
@@ -13,66 +14,105 @@ const GovMap = () => {
     fetchHotspots().then(data => {
       setHotspots(data);
       setLoading(false);
+    }).catch(e => {
+      console.error(e);
+      setLoading(false);
     });
   }, []);
 
   const getMarkerColor = (score: number) => {
-    if (score >= 80) return '#f43f5e';
-    if (score >= 60) return '#f59e0b';
-    return '#3b82f6';
+    if (score >= 80) return '#ffb693'; // Terracotta alert
+    if (score >= 60) return '#d47a4c'; // Amber warning
+    return '#5da673'; // Emerald standard
   };
 
   const filteredHotspots = hotspots.filter(h => categoryFilter === 'All' || h.category === categoryFilter);
 
+  const criticalCount = filteredHotspots.filter(h => h.priority_score >= 80).length;
+  const warningCount = filteredHotspots.filter(h => h.priority_score >= 60 && h.priority_score < 80).length;
+
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-10rem)] flex flex-col space-y-4 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-8.5rem)] flex flex-col space-y-4 animate-in fade-in duration-500 font-sans">
+      
+      {/* Top Map Header Strip */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#27342c] pb-4 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-white">Spatial Intelligence Map</h1>
-          <p className="text-slate-400 mt-1">Live infrastructure failure clusters across the state.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 rounded-full bg-[#5da673]/15 border border-[#5da673]/30 text-[#8cd7a0] font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#5da673] animate-pulse"></span>
+              GIS DEMAND INTELLIGENCE
+            </span>
+            <span className="font-mono text-xs text-[#9ab0a2]">Gaya District Grid</span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#e8ede9]">
+            Geospatial Hotspots & Infrastructure Map
+          </h1>
+          <p className="text-xs text-[#9ab0a2] mt-0.5">
+            Spatial failure clusters synthesized from multi-citizen voice telemetry.
+          </p>
         </div>
-        <div className="flex items-center gap-4">
-          <select 
-            value={categoryFilter} 
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-white px-4 py-2 rounded-lg outline-none text-sm font-bold"
-          >
-            <option value="All">All Categories</option>
-            <option value="Road Infrastructure">Road</option>
-            <option value="Water Supply">Water</option>
-            <option value="Healthcare">Healthcare</option>
-            <option value="Education">Education</option>
-            <option value="Digital Connectivity">Digital</option>
-          </select>
-          <div className="flex gap-4 bg-slate-900 p-2.5 rounded-lg border border-slate-700 shadow-sm text-slate-300">
-            <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="w-3 h-3 rounded-full bg-rose-500"></span> Critical ({filteredHotspots.filter(h => h.priority_score >= 80).length})
-            </div>
-            <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="w-3 h-3 rounded-full bg-amber-500"></span> Warning ({filteredHotspots.filter(h => h.priority_score >= 60 && h.priority_score < 80).length})
-            </div>
+
+        {/* Filter and Badges */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-[#151d19] border border-[#27342c] px-3 py-1.5 rounded-xl text-xs font-mono">
+            <Filter className="w-3.5 h-3.5 text-[#5da673]" />
+            <select 
+              value={categoryFilter} 
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-transparent text-[#e8ede9] outline-none font-mono text-xs cursor-pointer"
+            >
+              <option value="All" className="bg-[#151d19]">All Sectors</option>
+              <option value="Road Infrastructure" className="bg-[#151d19]">Road Infrastructure</option>
+              <option value="Water Supply" className="bg-[#151d19]">Water Supply</option>
+              <option value="Healthcare" className="bg-[#151d19]">Healthcare</option>
+              <option value="Education" className="bg-[#151d19]">Education</option>
+              <option value="Digital Connectivity" className="bg-[#151d19]">Digital Connectivity</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-[#151d19] px-3 py-1.5 rounded-xl border border-[#27342c] font-mono text-xs">
+            <span className="flex items-center gap-1.5 text-[#ffb693] font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#ffb693]"></span>
+              Critical ({criticalCount})
+            </span>
+            <span className="text-[#27342c]">|</span>
+            <span className="flex items-center gap-1.5 text-[#d47a4c]">
+              <span className="w-2 h-2 rounded-full bg-[#d47a4c]"></span>
+              Warning ({warningCount})
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-slate-800 rounded-xl overflow-hidden border border-slate-700 relative">
-        <div className="absolute top-4 left-4 z-[1000] bg-slate-900/95 backdrop-blur p-4 rounded-lg shadow-lg border border-slate-700 max-w-xs text-white">
-          <h3 className="font-bold flex items-center gap-2 mb-2">
-            <Layers className="w-4 h-4 text-brand-400" /> Map Intelligence
-          </h3>
-          <p className="text-xs text-slate-400 mb-2">
-            Circles represent AI-clustered hotspots. Radius indicates affected population size.
+      {/* Map Viewport Container */}
+      <div className="flex-1 bg-[#08100c] rounded-2xl overflow-hidden border border-[#27342c] relative shadow-2xl min-h-[400px]">
+        
+        {/* Floating HUD Intelligence Dock */}
+        <div className="absolute top-4 left-4 z-[1000] bg-[#151d19]/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-[#27342c] max-w-xs text-[#e8ede9]">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Sparkles className="w-4 h-4 text-[#8cd7a0]" />
+            <h3 className="font-display font-bold text-xs uppercase tracking-wider text-[#e8ede9]">
+              Spatial Demand HUD
+            </h3>
+          </div>
+          <p className="text-[11px] text-[#9ab0a2] leading-relaxed mb-3">
+            Marker radii scale with affected population size. Terracotta badges indicate P1 urgent clusters.
           </p>
+          <div className="font-mono text-[10px] text-[#8cd7a0] flex items-center justify-between border-t border-[#27342c] pt-2">
+            <span>LAYERS: VECTOR GIS</span>
+            <span>NODE: IN-BH-04</span>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex h-full items-center justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="flex h-full items-center justify-center text-[#8cd7a0] font-mono text-xs">
+            <Loader2 className="w-8 h-8 animate-spin text-[#5da673] mr-2" />
+            <span>Loading Geospatial Telemetry...</span>
           </div>
         ) : (
           <MapContainer 
-            center={[20.0, 78.0]} 
-            zoom={5} 
+            center={[24.7914, 85.0002]} 
+            zoom={6} 
             scrollWheelZoom={true}
             className="w-full h-full z-0"
           >
@@ -81,48 +121,65 @@ const GovMap = () => {
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
             
-            {filteredHotspots.map(hotspot => (
-              <CircleMarker
-                key={hotspot.id}
-                center={[hotspot.lat, hotspot.lng]}
-                radius={Math.max(6, Math.min(20, hotspot.citizens_affected / 1000))}
-                pathOptions={{ 
-                  fillColor: getMarkerColor(hotspot.priority_score), 
-                  color: getMarkerColor(hotspot.priority_score),
-                  weight: 2,
-                  fillOpacity: 0.6
-                }}
-              >
-                <Popup className="rounded-lg bg-slate-900 border border-slate-700 text-white p-0 overflow-hidden">
-                  <div className="p-4 bg-slate-900 text-white min-w-[200px]">
-                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">{hotspot.category}</div>
-                    <div className="font-bold text-lg mb-3">{hotspot.name}</div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-400 flex items-center gap-1"><Activity className="w-3 h-3"/> Score</span>
-                        <span className="font-bold text-rose-400">{hotspot.priority_score}/100</span>
+            {filteredHotspots.map(hotspot => {
+              const markerColor = getMarkerColor(hotspot.priority_score);
+              return (
+                <CircleMarker
+                  key={hotspot.id}
+                  center={[hotspot.lat, hotspot.lng]}
+                  radius={Math.max(8, Math.min(24, hotspot.citizens_affected / 1200))}
+                  pathOptions={{ 
+                    fillColor: markerColor, 
+                    color: markerColor,
+                    weight: 2,
+                    fillOpacity: 0.65
+                  }}
+                >
+                  <Popup>
+                    <div className="p-1 min-w-[220px] font-sans">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-[#ffb693] font-bold mb-1">
+                        {hotspot.category}
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-400 flex items-center gap-1"><Users className="w-3 h-3"/> Affected</span>
-                        <span className="font-bold">{hotspot.citizens_affected.toLocaleString()}</span>
+                      <div className="font-display font-bold text-base text-[#e8ede9] mb-3">
+                        {hotspot.name}
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-400 flex items-center gap-1"><Layers className="w-3 h-3"/> Reports</span>
-                        <span className="font-bold">{hotspot.report_count}</span>
+                      
+                      <div className="space-y-1.5 mb-4 font-mono text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[#9ab0a2] flex items-center gap-1">
+                            <Activity className="w-3 h-3 text-[#5da673]"/> Priority Score:
+                          </span>
+                          <span className="font-bold text-[#ffb693]">{hotspot.priority_score}/100</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[#9ab0a2] flex items-center gap-1">
+                            <Users className="w-3 h-3 text-[#5da673]"/> Affected Pop:
+                          </span>
+                          <span className="font-bold text-[#e8ede9]">{hotspot.citizens_affected.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[#9ab0a2] flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-[#5da673]"/> Grievance Pings:
+                          </span>
+                          <span className="font-bold text-[#e8ede9]">{hotspot.report_count}</span>
+                        </div>
                       </div>
+                      
+                      <Link 
+                        to="/gov/recommendations"
+                        className="block text-center w-full bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] py-2 rounded-lg text-xs font-mono font-bold transition-colors"
+                      >
+                        VIEW AI RECOMMENDATIONS →
+                      </Link>
                     </div>
-                    
-                    <button className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded text-xs font-bold transition-colors">
-                      VIEW INTELLIGENCE
-                    </button>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
           </MapContainer>
         )}
       </div>
+
     </div>
   );
 };

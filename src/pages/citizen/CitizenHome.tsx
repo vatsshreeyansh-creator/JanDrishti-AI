@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { AlertCircle, CheckCircle2, MapPin } from 'lucide-react';
+import { 
+  AlertCircle, 
+  CheckCircle2, 
+  MapPin, 
+  PlusCircle, 
+  Layers, 
+  Radio, 
+  List,
+  Sparkles,
+  ArrowRight
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchReports } from '../../api/client';
 
@@ -14,7 +24,9 @@ const CitizenHome = () => {
       try {
         const data = await fetchReports(1000, 'recent');
         setReports(data);
-      } catch (e) {} finally {
+      } catch (e) {
+        console.error(e);
+      } finally {
         setLoading(false);
       }
     };
@@ -23,101 +35,159 @@ const CitizenHome = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter to only show issues in the most recent report's location (e.g. user's current city)
-  const localLocation = reports.length > 0 ? reports[0].location_name : '';
-  const localIssues = reports.filter(r => r.location_name === localLocation);
+  const localLocation = reports.length > 0 ? reports[0].location_name : 'Gaya, Bihar';
+  const localIssues = reports.filter(r => !localLocation || r.location_name === localLocation || reports.length < 5);
   
-  const resolvedCount = localIssues.filter(r => r.status === 'Resolved').length;
-  const unresolved = localIssues.length - resolvedCount;
+  const displayList = localIssues.length > 0 ? localIssues : reports;
+  const resolvedCount = displayList.filter(r => r.status === 'Resolved').length;
+  const unresolved = displayList.length - resolvedCount;
 
-  if (loading) return null;
-
-  // Find center
-  const centerLat = localIssues.length > 0 ? localIssues[0].lat : 28.6139;
-  const centerLng = localIssues.length > 0 ? localIssues[0].lng : 77.2090;
+  // Center coordinate (Gaya default)
+  const centerLat = displayList.length > 0 && displayList[0].lat ? displayList[0].lat : 24.7914;
+  const centerLng = displayList.length > 0 && displayList[0].lng ? displayList[0].lng : 85.0002;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 font-sans">
       
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">My Community: {localIssues.length > 0 ? localIssues[0].district : 'Local Area'}</h1>
-          <p className="text-slate-500 mt-1">Stay updated on local infrastructure and community reports.</p>
-        </div>
-        <Link 
-          to="/citizen/report" 
-          className="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm inline-flex items-center justify-center gap-2"
-        >
-          <AlertCircle className="w-5 h-5" />
-          Report an Issue
-        </Link>
-      </header>
+      {/* Hero Intake Header */}
+      <section className="bg-[#151d19] border border-[#27342c] rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#5da673]/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10 max-w-4xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1a241f] border border-[#27342c] text-[#ffb693] font-mono text-xs uppercase tracking-wider mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-[#ffb693]" />
+            Sovereign Civic Multi-Modal Intake Engine
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#e8ede9] mb-2">
+            Good morning, Citizen.
+            <span className="block text-[#8cd7a0] text-xl sm:text-2xl font-medium mt-1">
+              What does your community need today?
+            </span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-[#9ab0a2] max-w-2xl mt-2 leading-relaxed">
+            <span className="text-[#e8ede9] font-medium">“रउआ का चाहीं, हमनी के बताईं”</span> — Report infrastructure grievances in Bhojpuri, Hindi, Magahi, or English. Visual photos and voice audio are vectorized in sub-second latency directly to executive nodal engineers.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-6">
+            <Link 
+              to="/citizen/report" 
+              className="bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] px-6 py-3 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(93,166,115,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all inline-flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Report an Infrastructure Issue
+            </Link>
+
+            <Link 
+              to="/citizen/my-reports" 
+              className="bg-[#1a241f] hover:bg-[#242c27] text-[#e8ede9] border border-[#27342c] px-5 py-3 rounded-xl font-medium text-sm transition-all inline-flex items-center gap-2"
+            >
+              <List className="w-4 h-4 text-[#8cd7a0]" />
+              Track Citizen Docket
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 3 Telemetry KPI Tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        {/* Active Grievances */}
+        <div className="bg-[#151d19] border border-[#27342c] p-5 rounded-2xl shadow-md flex items-center gap-4 relative overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-[#773208]/30 border border-[#ffb693]/30 text-[#ffb693] flex items-center justify-center shrink-0">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-sm text-slate-500 font-medium">Active Issues Near You</div>
-            <div className="text-2xl font-bold text-slate-800">{unresolved}</div>
+            <div className="text-xs font-mono uppercase tracking-wider text-[#9ab0a2]">Active Area Issues</div>
+            <div className="text-2xl sm:text-3xl font-bold font-display text-[#ffb693] mt-0.5">
+              {loading ? '...' : unresolved}
+            </div>
+            <div className="text-[11px] font-mono text-[#9ab0a2] mt-0.5">Awaiting / Under Triage</div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
+
+        {/* Resolved in Area */}
+        <div className="bg-[#151d19] border border-[#27342c] p-5 rounded-2xl shadow-md flex items-center gap-4 relative overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-[#5da673]/20 border border-[#5da673]/40 text-[#8cd7a0] flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-sm text-slate-500 font-medium">Resolved in Area</div>
-            <div className="text-2xl font-bold text-slate-800">{resolvedCount}</div>
+            <div className="text-xs font-mono uppercase tracking-wider text-[#9ab0a2]">Resolved in Area</div>
+            <div className="text-2xl sm:text-3xl font-bold font-display text-[#8cd7a0] mt-0.5">
+              {loading ? '...' : resolvedCount}
+            </div>
+            <div className="text-[11px] font-mono text-[#5da673] mt-0.5">Audited via Satellite & Field</div>
           </div>
         </div>
-        <div className={`bg-gradient-to-br from-brand-500 to-brand-700 p-6 rounded-xl shadow-sm text-white flex items-center gap-4`}>
-          <div className="w-12 h-12 bg-white/20 text-white rounded-full flex items-center justify-center">
-            <MapPin className="w-6 h-6" />
+
+        {/* Total Area Telemetry Reports */}
+        <div className="bg-[#151d19] border border-[#27342c] p-5 rounded-2xl shadow-md flex items-center gap-4 relative overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-[#1a241f] border border-[#27342c] text-[#e8ede9] flex items-center justify-center shrink-0">
+            <Radio className="w-6 h-6 text-[#5da673]" />
           </div>
           <div>
-            <div className="text-white/80 text-sm font-medium">Total Area Reports</div>
-            <div className="text-3xl font-bold">{localIssues.length}</div>
+            <div className="text-xs font-mono uppercase tracking-wider text-[#9ab0a2]">Total Area Ingestion</div>
+            <div className="text-2xl sm:text-3xl font-bold font-display text-[#e8ede9] mt-0.5">
+              {loading ? '...' : displayList.length}
+            </div>
+            <div className="text-[11px] font-mono text-[#9ab0a2] mt-0.5">Constituency: Gaya Node</div>
           </div>
         </div>
+
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main Grid: Geospatial Map + Recent Reports Docket */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-brand-500" />
-            Neighborhood Map
-          </h2>
-          <div className="bg-slate-200 rounded-xl overflow-hidden border border-slate-300 h-96 relative">
+        {/* Neighborhood GIS Map (7 cols) */}
+        <div className="lg:col-span-7 bg-[#151d19] border border-[#27342c] rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#5da673]" />
+              <h2 className="font-display font-bold text-base text-[#e8ede9]">
+                Neighborhood Telemetry Map
+              </h2>
+            </div>
+            <span className="font-mono text-[10px] text-[#8cd7a0] bg-[#5da673]/10 border border-[#5da673]/30 px-2 py-0.5 rounded">
+              Gaya Sub-Ward Grid
+            </span>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-[#27342c] h-[380px] relative bg-[#08100c]">
             <MapContainer 
               center={[centerLat, centerLng]} 
-              zoom={13} 
+              zoom={12} 
               scrollWheelZoom={false}
               className="w-full h-full z-0"
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://carto.com/">Carto</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
               />
-              {localIssues.map(complaint => (
+              {displayList.map(complaint => (
                 <CircleMarker
                   key={complaint.id}
-                  center={[complaint.lat, complaint.lng]}
+                  center={[complaint.lat || 24.7914, complaint.lng || 85.0002]}
                   radius={8}
                   pathOptions={{ 
-                    fillColor: complaint.status === 'Resolved' ? '#10b981' : '#ef4444', 
-                    color: complaint.status === 'Resolved' ? '#10b981' : '#ef4444',
+                    fillColor: complaint.status === 'Resolved' ? '#5da673' : '#ffb693', 
+                    color: complaint.status === 'Resolved' ? '#8cd7a0' : '#d47a4c',
                     weight: 2,
-                    fillOpacity: 0.6
+                    fillOpacity: 0.7
                   }}
                 >
-                  <Popup className="rounded-lg">
-                    <div className="p-1">
-                      <div className="font-bold text-slate-800 mb-1">{complaint.category}</div>
-                      <div className="text-xs text-slate-600">"{complaint.text}"</div>
-                      <div className="text-xs font-bold text-brand-600 mt-2">{complaint.status}</div>
+                  <Popup>
+                    <div className="p-1 space-y-1">
+                      <div className="font-mono text-[10px] uppercase text-[#ffb693] font-bold">
+                        {complaint.category} • #{complaint.id}
+                      </div>
+                      <div className="text-xs text-[#e8ede9] italic line-clamp-2">
+                        "{complaint.translated_text || complaint.text}"
+                      </div>
+                      <div className="text-[11px] font-mono font-bold text-[#8cd7a0] pt-1">
+                        Status: {complaint.status}
+                      </div>
                     </div>
                   </Popup>
                 </CircleMarker>
@@ -126,23 +196,52 @@ const CitizenHome = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-slate-800">Recent Reports</h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100 h-96 overflow-y-auto custom-scrollbar">
-            {localIssues.slice(0, 5).map((issue) => (
-              <div key={issue.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded">
+        {/* Recent Area Reports (5 cols) */}
+        <div className="lg:col-span-5 bg-[#151d19] border border-[#27342c] rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[#ffb693]" />
+              <h2 className="font-display font-bold text-base text-[#e8ede9]">
+                Recent Community Docket
+              </h2>
+            </div>
+            <Link 
+              to="/citizen/my-reports" 
+              className="text-xs font-mono text-[#5da673] hover:text-[#8cd7a0] flex items-center gap-1"
+            >
+              View All <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="divide-y divide-[#27342c] max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
+            {displayList.slice(0, 5).map((issue) => (
+              <div key={issue.id} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-mono text-[10px] font-bold text-[#8cd7a0] bg-[#1a241f] border border-[#27342c] px-2 py-0.5 rounded">
                     {issue.category}
                   </span>
+                  <span className="font-mono text-[10px] text-[#9ab0a2]">
+                    #{issue.id}
+                  </span>
                 </div>
-                <p className="text-sm text-slate-700 line-clamp-3">"{issue.text}"</p>
-                <div className={`mt-3 text-xs font-bold inline-block px-2 py-1 rounded ${
-                  issue.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50' :
-                  issue.status === 'Under Investigation' ? 'text-amber-600 bg-amber-50' :
-                  'text-slate-600 bg-slate-100'
-                }`}>
-                  Status: {issue.status}
+                
+                <p className="text-xs text-[#e8ede9] line-clamp-2 mt-1.5 leading-relaxed">
+                  "{issue.translated_text || issue.text}"
+                </p>
+
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[10px] font-mono text-[#9ab0a2] flex items-center gap-1">
+                    <MapPin className="w-2.5 h-2.5 text-[#5da673]" /> {issue.location_name || 'Gaya'}
+                  </span>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                    issue.status === 'Resolved' 
+                      ? 'text-[#8cd7a0] bg-[#5da673]/15 border border-[#5da673]/30' 
+                      : issue.status === 'Under Investigation' 
+                      ? 'text-[#ffb693] bg-[#773208]/30 border border-[#ffb693]/30' 
+                      : 'text-[#9ab0a2] bg-[#1a241f] border border-[#27342c]'
+                  }`}>
+                    {issue.status}
+                  </span>
                 </div>
               </div>
             ))}
