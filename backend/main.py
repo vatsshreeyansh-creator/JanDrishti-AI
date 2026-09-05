@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 
 import models, schemas, database, services, seed
+from audio_service import AudioTranscriptionService
 
 app = FastAPI(title="JanDrishti API")
 
@@ -278,3 +279,29 @@ def read_notification(notif_id: int, db: Session = Depends(database.get_db)):
         db.commit()
         db.refresh(notif)
     return notif
+
+
+# -------------------------------------------------------------
+# AUDIO TRANSCRIPTION PIPELINE (GEMINI MULTIMODAL)
+# -------------------------------------------------------------
+@app.post("/api/audio/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    if not file:
+        raise HTTPException(status_code=400, detail="No audio file uploaded.")
+    
+    audio_bytes = await file.read()
+    if not audio_bytes or len(audio_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Audio file is empty.")
+    
+    mime_type = file.content_type or "audio/webm"
+    try:
+        result = AudioTranscriptionService.transcribe(audio_bytes=audio_bytes, mime_type=mime_type)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        # Server configuration or upstream Gemini API failure
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audio transcription failed: {str(e)}")
+

@@ -24,6 +24,41 @@ export const submitReport = async (text: string, location?: {lat: number, lng: n
   return res.json();
 };
 
+export const transcribeAudio = async (audioBlob: Blob): Promise<{ text: string; language: string }> => {
+  const formData = new FormData();
+  let ext = 'webm';
+  if (audioBlob.type.includes('mp4') || audioBlob.type.includes('m4a')) {
+    ext = 'mp4';
+  } else if (audioBlob.type.includes('ogg')) {
+    ext = 'ogg';
+  } else if (audioBlob.type.includes('wav')) {
+    ext = 'wav';
+  } else if (audioBlob.type.includes('aac')) {
+    ext = 'aac';
+  }
+  formData.append('file', audioBlob, `speech.${ext}`);
+
+  const res = await fetch(`${API_URL}/audio/transcribe`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let errorDetail = `Transcription failed (${res.status})`;
+    try {
+      const errorJson = await res.json();
+      if (errorJson?.detail) {
+        errorDetail = errorJson.detail;
+      }
+    } catch {
+      // fallback to status code message
+    }
+    throw new Error(errorDetail);
+  }
+
+  return res.json();
+};
+
 export const fetchHotspots = async () => {
   const res = await fetch(`${API_URL}/hotspots`);
   return res.json();

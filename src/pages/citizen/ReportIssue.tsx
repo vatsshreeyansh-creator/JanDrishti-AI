@@ -9,73 +9,177 @@ import {
   ArrowRight,
   Cpu,
   Layers,
-  FileText
+  FileText,
+  AlertCircle,
+  Loader2,
+  X
 } from 'lucide-react';
-import { submitReport } from '../../api/client';
+import { submitReport, transcribeAudio } from '../../api/client';
 import { Link } from 'react-router-dom';
 
 const CitizenReport = () => {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stage, setStage] = useState<'idle' | 'recording' | 'processing' | 'result'>('idle');
   const [result, setResult] = useState<any>(null);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('auto');
 
-  // Web Speech Recognition
-  const recognitionRef = useRef<any>(null);
+  // Real Microphone MediaRecorder state
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    // @ts-ignore
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'hi-IN';
-      
-      recognitionRef.current.onresult = (event: any) => {
-        let currentTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          currentTranscript += transcript;
-        }
-        setText(prev => (prev ? prev + ' ' : '') + currentTranscript);
-      };
-
-      recognitionRef.current.onerror = () => {
-        setIsRecording(false);
-        setStage('idle');
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-        if (stage === 'recording') setStage('idle');
-      };
+  // Stop media stream tracks cleanly
+  const stopMediaStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      streamRef.current = null;
     }
-  }, [stage]);
+  };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopMediaStream();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    setErrorMessage(null);
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setErrorMessage(
+        'Your browser does not support audio recording (MediaRecorder API unavailable). Please type your grievance manually.'
+      );
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      // Select candidate MIME type supported by browser
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/aac'
+      ];
+      let selectedMime = '';
+      for (const mime of candidates) {
+        if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(mime)) {
+          selectedMime = mime;
+          break;
+        }
+      }
+
+      const recorderOptions: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        stopMediaStream();
+
+        const chunks = audioChunksRef.current;
+        if (chunks.length === 0) {
+          setErrorMessage('No audio data was recorded. Please try speaking again.');
+          setIsRecording(false);
+          setIsTranscribing(false);
+          setStage('idle');
+          return;
+        }
+
+        const mimeType = recorder.mimeType || selectedMime || 'audio/webm';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+
+        if (audioBlob.size === 0) {
+          setErrorMessage('Recorded audio was empty. Please speak clearly into your microphone.');
+          setIsRecording(false);
+          setIsTranscribing(false);
+          setStage('idle');
+          return;
+        }
+
+        setIsTranscribing(true);
+        try {
+          const res = await transcribeAudio(audioBlob);
+          if (res.text && res.text.trim()) {
+            setText(prev => (prev ? `${prev} ${res.text.trim()}` : res.text.trim()));
+          }
+          if (res.language) {
+            const l = res.language.toLowerCase();
+            if (l.includes('hindi')) setSelectedLanguage('hi');
+            else if (l.includes('bhojpuri')) setSelectedLanguage('bho');
+            else if (l.includes('magahi')) setSelectedLanguage('mag');
+            else if (l.includes('english')) setSelectedLanguage('en');
+          }
+        } catch (err: any) {
+          console.error('Transcription failed:', err);
+          setErrorMessage(err?.message || 'Audio transcription failed. Please try again or enter text manually.');
+        } finally {
+          setIsTranscribing(false);
+          setStage('idle');
+        }
+      };
+
+      recorder.onerror = (e: any) => {
+        console.error('MediaRecorder error:', e);
+        stopMediaStream();
+        setIsRecording(false);
+        setIsTranscribing(false);
+        setStage('idle');
+        setErrorMessage('An error occurred during audio recording.');
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+      setStage('recording');
+    } catch (err: any) {
+      console.error('getUserMedia error:', err);
+      stopMediaStream();
       setIsRecording(false);
       setStage('idle');
-    } else {
-      setText('');
-      try {
-        recognitionRef.current?.start();
-        setIsRecording(true);
-        setStage('recording');
-      } catch (e) {
-        // Fallback simulation if speech recognition cannot access microphone
-        setIsRecording(true);
-        setStage('recording');
-        setTimeout(() => {
-          setText('हमारे गांव की मुख्य सड़क बारिश में पूरी तरह टूट गई है और पानी भर गया है।');
-          setIsRecording(false);
-          setStage('idle');
-        }, 3000);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setErrorMessage('Microphone permission was denied. Please allow microphone access in your browser to record audio.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setErrorMessage('No microphone device was detected. Please connect a microphone or type your grievance manually.');
+      } else {
+        setErrorMessage(err.message || 'Unable to access your microphone.');
       }
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    } else {
+      stopMediaStream();
+    }
+    setIsRecording(false);
+  };
+
+  const toggleRecording = () => {
+    if (isTranscribing) return;
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -443,6 +547,23 @@ const CitizenReport = () => {
       <div className="bg-[#151d19] border border-[#27342c] rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#5da673]/5 rounded-full blur-3xl pointer-events-none"></div>
 
+        {/* Error notification banner */}
+        {errorMessage && (
+          <div className="mb-6 bg-[#773208]/20 border border-[#ffb693]/40 text-[#ffb693] p-3.5 rounded-xl flex items-start justify-between gap-3 text-xs font-mono animate-in fade-in duration-200">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[#ffb693] shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-[#9ab0a2] hover:text-[#e8ede9] p-0.5 cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Mic Pulse Center Hub */}
         <div className="flex flex-col items-center justify-center my-4">
           <div className="relative flex items-center justify-center">
@@ -456,14 +577,25 @@ const CitizenReport = () => {
 
             <button
               onClick={toggleRecording}
+              disabled={isTranscribing}
               className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${
-                isRecording
-                  ? 'bg-[#ffb693] text-[#351000] shadow-[0_0_30px_rgba(255,182,147,0.5)] scale-105'
-                  : 'bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] shadow-[0_0_24px_rgba(93,166,115,0.4)] hover:scale-105 active:scale-95'
+                isTranscribing
+                  ? 'bg-[#1a241f] text-[#8cd7a0] border border-[#5da673]/40 cursor-wait'
+                  : isRecording
+                  ? 'bg-[#ffb693] text-[#351000] shadow-[0_0_30px_rgba(255,182,147,0.5)] scale-105 cursor-pointer'
+                  : 'bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] shadow-[0_0_24px_rgba(93,166,115,0.4)] hover:scale-105 active:scale-95 cursor-pointer'
               }`}
-              title={isRecording ? 'Click to Stop Recording' : 'Click to Speak'}
+              title={
+                isTranscribing
+                  ? 'Transcribing audio with Gemini...'
+                  : isRecording
+                  ? 'Click to Stop Recording'
+                  : 'Click to Speak'
+              }
             >
-              {isRecording ? (
+              {isTranscribing ? (
+                <Loader2 className="w-10 h-10 animate-spin" />
+              ) : isRecording ? (
                 <Square className="w-10 h-10" />
               ) : (
                 <Mic className="w-12 h-12" />
@@ -472,17 +604,21 @@ const CitizenReport = () => {
           </div>
 
           <span className="font-mono text-xs uppercase tracking-widest font-bold mt-5 text-[#8cd7a0]">
-            {isRecording ? '● RECORDING LIVE ACOUSTIC AUDIO...' : 'TAP MICROPHONE TO SPEAK'}
+            {isTranscribing
+              ? '● GEMINI AI IS TRANSCRIBING ACOUSTIC AUDIO...'
+              : isRecording
+              ? '● RECORDING LIVE ACOUSTIC AUDIO (CLICK TO STOP)...'
+              : 'TAP MICROPHONE TO SPEAK'}
           </span>
 
           {/* Decibel Equalizer visualization bars */}
           <div className="w-full max-w-xs mt-4 flex items-end justify-center gap-1.5 h-10 px-4">
-            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-7 animate-pulse' : 'h-2 opacity-30'}`}></div>
-            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-9 animate-pulse' : 'h-3 opacity-30'}`}></div>
-            <div className={`w-1.5 bg-[#ffb693] rounded-full transition-all duration-150 ${isRecording ? 'h-10 animate-pulse' : 'h-4 opacity-40'}`}></div>
-            <div className={`w-1.5 bg-[#ffb693] rounded-full transition-all duration-150 ${isRecording ? 'h-8 animate-pulse' : 'h-3 opacity-40'}`}></div>
-            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-10 animate-pulse' : 'h-5 opacity-30'}`}></div>
-            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-6 animate-pulse' : 'h-2 opacity-30'}`}></div>
+            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-7 animate-pulse' : isTranscribing ? 'h-5 animate-pulse' : 'h-2 opacity-30'}`}></div>
+            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-9 animate-pulse' : isTranscribing ? 'h-8 animate-pulse' : 'h-3 opacity-30'}`}></div>
+            <div className={`w-1.5 bg-[#ffb693] rounded-full transition-all duration-150 ${isRecording ? 'h-10 animate-pulse' : isTranscribing ? 'h-10 animate-pulse' : 'h-4 opacity-40'}`}></div>
+            <div className={`w-1.5 bg-[#ffb693] rounded-full transition-all duration-150 ${isRecording ? 'h-8 animate-pulse' : isTranscribing ? 'h-7 animate-pulse' : 'h-3 opacity-40'}`}></div>
+            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-10 animate-pulse' : isTranscribing ? 'h-9 animate-pulse' : 'h-5 opacity-30'}`}></div>
+            <div className={`w-1.5 bg-[#5da673] rounded-full transition-all duration-150 ${isRecording ? 'h-6 animate-pulse' : isTranscribing ? 'h-4 animate-pulse' : 'h-2 opacity-30'}`}></div>
           </div>
         </div>
 
