@@ -186,16 +186,21 @@ const CitizenReport = () => {
   const handleManualSubmit = async () => {
     if (!text.trim()) return;
     setStage('processing');
+    setErrorMessage(null);
     
     try {
       const location = { lat: 24.7914, lng: 85.0002, name: 'Gaya, Bihar' };
       const res = await submitReport(text, location);
+      if (!res || typeof res.id === 'undefined') {
+        throw new Error('Server did not return a valid confirmed report ID.');
+      }
       setTimeout(() => {
         setResult(res);
         setStage('result');
       }, 1200); // brief cinematic pause to show neural pipeline animation
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Report submission failed:', e);
+      setErrorMessage(e?.message || 'Failed to submit grievance. Please try again.');
       setStage('idle');
     }
   };

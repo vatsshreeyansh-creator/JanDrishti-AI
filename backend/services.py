@@ -1,4 +1,5 @@
 import os
+import re
 from google import genai
 from google.genai import types
 import schemas
@@ -29,7 +30,7 @@ class GeminiAIService:
             raise ValueError("Grievance text cannot be empty.")
 
         client = cls.get_client()
-        model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        model_name = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
 
         system_instruction = (
             "You are the JanDrishti AI grievance analysis engine for civic governance. "
@@ -43,30 +44,63 @@ class GeminiAIService:
             "6. confidence: An integer between 0 and 100 representing classification and extraction confidence based on report clarity."
         )
 
-        config = types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            response_mime_type="application/json",
-            response_schema=schemas.GrievanceAnalysis,
-            temperature=0.1,
-        )
+        response_format = {
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": schemas.GrievanceAnalysis.model_json_schema(),
+        }
 
-        response = client.models.generate_content(
-            model=model_name,
-            contents=f"Citizen Grievance Report:\n\"\"\"\n{text.strip()}\n\"\"\"",
-            config=config,
-        )
+        output_text = None
+        try:
+            interaction = client.interactions.create(
+                model=model_name,
+                system_instruction=system_instruction,
+                input=f"Citizen Grievance Report:\n\"\"\"\n{text.strip()}\n\"\"\"",
+                response_format=response_format,
+            )
+            output_text = getattr(interaction, "output_text", None)
+            if not output_text and hasattr(interaction, "steps"):
+                steps = getattr(interaction, "steps", []) or []
+                for step in reversed(steps):
+                    step_type = getattr(step, "type", None) or (step.get("type") if isinstance(step, dict) else None)
+                    if step_type == "model_output":
+                        content = getattr(step, "content", None) or (step.get("content") if isinstance(step, dict) else [])
+                        parts = []
+                        for item in content:
+                            item_type = getattr(item, "type", None) or (item.get("type") if isinstance(item, dict) else None)
+                            if item_type == "text":
+                                t = getattr(item, "text", None) or (item.get("text") if isinstance(item, dict) else "")
+                                if t:
+                                    parts.append(t)
+                        if parts:
+                            output_text = "".join(parts)
+                            break
+        except Exception as inter_err:
+            # Fallback to generate_content if model variant or SDK mode requires generate_content
+            try:
+                config = types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type="application/json",
+                    response_schema=schemas.GrievanceAnalysis,
+                    temperature=0.1,
+                )
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=f"Citizen Grievance Report:\n\"\"\"\n{text.strip()}\n\"\"\"",
+                    config=config,
+                )
+                output_text = response.text or ""
+            except Exception as inner_err:
+                raise RuntimeError(f"Gemini API analysis error: {inter_err}") from inner_err
 
-        if not response.text:
+        if not output_text or not output_text.strip():
             raise RuntimeError("Gemini API returned an empty response.")
 
-        raw_text = response.text.strip()
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-        elif raw_text.startswith("```"):
-            raw_text = raw_text[3:]
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
-        raw_text = raw_text.strip()
+        raw_text = output_text.strip()
+        if raw_text.startswith("```"):
+            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+            raw_text = re.sub(r"\s*```$", "", raw_text)
+            raw_text = raw_text.strip()
 
         try:
             analysis = schemas.GrievanceAnalysis.model_validate_json(raw_text)

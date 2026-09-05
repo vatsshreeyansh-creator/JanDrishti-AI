@@ -21,6 +21,20 @@ export const submitReport = async (text: string, location?: {lat: number, lng: n
       location_name: location?.name
     })
   });
+
+  if (!res.ok) {
+    let errorDetail = `Report registration failed (${res.status})`;
+    try {
+      const errorJson = await res.json();
+      if (errorJson?.detail) {
+        errorDetail = typeof errorJson.detail === 'string' ? errorJson.detail : JSON.stringify(errorJson.detail);
+      }
+    } catch {
+      // fallback to status code message
+    }
+    throw new Error(errorDetail);
+  }
+
   return res.json();
 };
 
