@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 
 import { GovLayout } from './layouts/GovLayout';
 import { CitizenLayout } from './layouts/CitizenLayout';
@@ -19,25 +20,27 @@ import MyReports from './pages/citizen/MyReports';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Landing />} />
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Landing />} />
 
-        {/* Government Routes */}
-        <Route path="/gov" element={<GovLayout><GovOverview /></GovLayout>} />
-        <Route path="/gov/map" element={<GovLayout><GovMap /></GovLayout>} />
-        <Route path="/gov/hotspots" element={<GovLayout><GovHotspots /></GovLayout>} />
-        <Route path="/gov/recommendations" element={<GovLayout><GovRecommendations /></GovLayout>} />
-        <Route path="/gov/budget" element={<GovLayout><GovBudget /></GovLayout>} />
-        <Route path="/gov/impact" element={<GovLayout><GovImpact /></GovLayout>} />
-        <Route path="/gov/risks" element={<GovLayout><GovRisks /></GovLayout>} />
+          {/* Government Routes */}
+          <Route path="/gov" element={<GovLayout><GovOverview /></GovLayout>} />
+          <Route path="/gov/map" element={<GovLayout><GovMap /></GovLayout>} />
+          <Route path="/gov/hotspots" element={<GovLayout><GovHotspots /></GovLayout>} />
+          <Route path="/gov/recommendations" element={<GovLayout><GovRecommendations /></GovLayout>} />
+          <Route path="/gov/budget" element={<GovLayout><GovBudget /></GovLayout>} />
+          <Route path="/gov/impact" element={<GovLayout><GovImpact /></GovLayout>} />
+          <Route path="/gov/risks" element={<GovLayout><GovRisks /></GovLayout>} />
 
-        {/* Citizen Routes */}
-        <Route path="/citizen" element={<CitizenLayout><CitizenHome /></CitizenLayout>} />
-        <Route path="/citizen/report" element={<CitizenLayout><CitizenReport /></CitizenLayout>} />
-        <Route path="/citizen/my-reports" element={<CitizenLayout><MyReports /></CitizenLayout>} />
-      </Routes>
-    </Router>
+          {/* Citizen Routes */}
+          <Route path="/citizen" element={<CitizenLayout><CitizenHome /></CitizenLayout>} />
+          <Route path="/citizen/report" element={<CitizenLayout><CitizenReport /></CitizenLayout>} />
+          <Route path="/citizen/my-reports" element={<CitizenLayout><MyReports /></CitizenLayout>} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
