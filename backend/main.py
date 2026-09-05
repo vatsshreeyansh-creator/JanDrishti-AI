@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 
-import models, schemas, database, services
+import models, schemas, database, services, seed
 
 app = FastAPI(title="JanDrishti API")
 
@@ -17,6 +17,8 @@ app.add_middleware(
 )
 
 models.Base.metadata.create_all(bind=database.engine)
+seed.seed()
+
 
 @app.get("/api/health")
 def health_check():
