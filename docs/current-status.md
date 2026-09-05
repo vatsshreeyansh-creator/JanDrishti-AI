@@ -1,9 +1,11 @@
 # JanDrishti Application Audit & Current Status
 
 **Last Verified:** September 2026  
-**Repository State:** Local Development Prototype (Pre-Git / Clean Baseline)  
-**Backend Runtime:** FastAPI (`http://127.0.0.1:8000`) with SQLite (`backend/jandrishti.db`)  
-**Frontend Runtime:** Vite + React + TypeScript + Tailwind CSS (`http://localhost:5173`)  
+**Repository:** Fresh Git repository on GitHub: [https://github.com/vatsshreeyansh-creator/JanDrishti-AI](https://github.com/vatsshreeyansh-creator/JanDrishti-AI) (`main` tracking `origin/main`, clean working tree)  
+**Frontend Deployment:** Live on Vercel: [https://jan-drishti-ai.vercel.app/](https://jan-drishti-ai.vercel.app/) (commit `a1f10fc` - *"Make frontend API URL configurable"*)  
+**Frontend API Configuration:** `src/api/client.ts` uses `VITE_API_URL` with `http://localhost:8000/api` as local fallback (TypeScript check and `npm run build` verified)  
+**Backend Deployment:** Local FastAPI (`http://127.0.0.1:8000`) with SQLite (`backend/jandrishti.db`); **NOT publicly deployed yet** (planned as a Web Service on Render; note that Render Free uses an ephemeral filesystem, so local SQLite data is non-persistent across restart, redeploy, or spin-down)  
+**Full-Stack Connection:** Incomplete in production because the public backend URL does not exist yet. Local development remains fully functional.
 
 ---
 
@@ -11,9 +13,12 @@
 
 The following features are genuinely implemented and operational in the current codebase:
 
-- **Dual-Portal Routing and Layouts** *(Locally Implemented)*:
+- **Configurable Frontend API Client** *(Locally Implemented & Build-Verified)*:
+  - `src/api/client.ts` dynamically resolves the base API URL using `import.meta.env.VITE_API_URL` with trailing-slash normalization, falling back cleanly to `http://localhost:8000/api` for local development.
+  - TypeScript checking (`tsc -b`) and production bundling (`npm run build`) verified clean.
+- **Dual-Portal Routing and Layouts** *(Locally Implemented & Vercel Deployed)*:
   - Clean separation between Citizen (`/citizen`, `/citizen/report`, `/citizen/my-reports`) and Government (`/gov`, `/gov/map`, `/gov/hotspots`, `/gov/recommendations`, `/gov/budget`, `/gov/impact`, `/gov/risks`) layouts via React Router in `src/App.tsx`.
-- **FastAPI REST Backend & Database Persistence** *(Backend-Connected & Database-Backed)*:
+- **FastAPI REST Backend & Database Persistence** *(Backend-Connected & Database-Backed Locally)*:
   - FastAPI application in `backend/main.py` with SQLAlchemy ORM and SQLite (`backend/jandrishti.db`).
   - Tables created automatically on startup: `citizen_reports`, `issue_clusters`, `hotspots`, `recommendations`, `risk_alerts`, `impact_metrics`, and `notifications`.
 - **Citizen Report Creation & Storage** *(Backend-Connected & Database-Backed)*:
@@ -121,13 +126,15 @@ These items are static UI controls or unhandled actions that currently perform n
 
 ## 5. Known Bugs / Limitations
 
+- **Public Frontend Currently Disconnected from Backend**:
+  - The frontend is live on Vercel (`https://jan-drishti-ai.vercel.app/`), but because the backend is not yet deployed publicly, production requests currently fallback to `http://localhost:8000/api`. The public frontend will remain disconnected until the backend is deployed on Render and `VITE_API_URL` is set in Vercel.
+- **Render Ephemeral Filesystem Limitation (Upcoming Backend Deployment)**:
+  - The current backend architecture relies on a local SQLite database (`backend/jandrishti.db`). On Render's Free tier, the filesystem is ephemeral; data written to SQLite will not persist across container restarts, spin-downs, or redeployments.
 - **Silent API Failure Handling**:
   - In `ReportIssue.tsx`, if the backend is unreachable or returns an error, the `catch` block logs to console and resets the UI to `idle`. No error toast or banner informs the user that submission failed.
 - **Missing Global State / User Authentication**:
   - There is no authentication or user session. All citizen reports are loaded globally in `MyReports.tsx`, meaning every citizen sees all reports submitted by anyone.
   - Notifications are global; any user sees notifications generated for all reports.
-- **Hardcoded Backend Host in Frontend Client**:
-  - `src/api/client.ts` defines `const API_URL = 'http://localhost:8000/api';`. On systems where `localhost` resolves to IPv6 `::1` while uvicorn binds to `127.0.0.1`, network requests can fail unless `VITE_API_URL` or `127.0.0.1` is used.
 - **Hardcoded Indian Coordinate Center**:
   - Maps default to center coordinates `[20.0, 78.0]` or `[28.6139, 77.2090]` (New Delhi) when local reports are absent.
 
@@ -137,6 +144,8 @@ These items are static UI controls or unhandled actions that currently perform n
 
 Functionality that is not present in the current codebase:
 
+- **Public Backend Deployment**: FastAPI backend is not yet hosted on a public cloud service.
+- **Persistent Production Database**: PostgreSQL or managed database to replace ephemeral SQLite for production hosting.
 - **User Authentication & Role-Based Access Control**: No login, JWT tokens, session management, or distinction between citizen accounts and government department credentials.
 - **Media Uploads (Photos / Video / Audio)**: Citizen report submission only accepts text. No image upload, file attachment, or cloud object storage integration (e.g., S3/GCS).
 - **Departmental Routing & Ticket Assignment**: No concept of municipal departments (e.g., PWD, Jal Board, Health Department) assigning tickets to field officers.
@@ -147,11 +156,12 @@ Functionality that is not present in the current codebase:
 
 ## 7. Current Backend & Data Architecture
 
-### Technology Stack
+### Technology Stack & Deployment Plan
 - **Framework**: FastAPI (Python 3.12 compatible)
 - **ASGI Server**: Uvicorn
 - **ORM**: SQLAlchemy 2.x
-- **Database**: SQLite (`backend/jandrishti.db`)
+- **Database**: SQLite (`backend/jandrishti.db`) — remains part of the backend for hackathon/demo stage.
+- **Hosting Plan**: FastAPI backend to be deployed separately on Render as a Web Service. Note that Render Free instances use an ephemeral filesystem, meaning local SQLite database data will not persist across service restarts, redeployments, or inactive spin-downs.
 - **Dependencies**: `fastapi`, `uvicorn`, `sqlalchemy`, `pydantic`, `deep-translator`, `langdetect`
 
 ### Database Schema & Models (`backend/models.py`)
@@ -182,7 +192,7 @@ Functionality that is not present in the current codebase:
 
 ### Seed Data Generator (`backend/seed.py`)
 - Populates database if `CitizenReport` table is empty.
-- Creates **10 issue clusters**, **10 hotspots**, **5 risk alerts**, **5 impact metrics**, and **5 sample citizen reports**. *(Note: Earlier documentation incorrectly claimed 200+ reports).*
+- Creates **10 issue clusters**, **10 hotspots**, **5 risk alerts**, **5 impact metrics**, and **5 sample citizen reports**.
 
 ---
 
@@ -206,13 +216,23 @@ Based on the verified simulated features, the following integrations are needed 
 
 ## 9. Immediate Project Status Snapshot
 
-- **What works now**: Complete end-to-end user navigation, real-time 5-second polling, report submission with database persistence, live status mutation from government dashboard, reactive visual status timeline in citizen portal, in-app notifications, Leaflet map rendering, and Recharts visualization.
-- **What is simulated**: AI classification (keyword matching), priority formula breakdown (client-side multiplication), hotspot clustering (static district matching), citizens affected (random integers), project recommendations (templated strings), budget simulation (basic proportional split), risk alerts (seeded mock records), and impact metrics (seeded mock records).
-- **What is broken / unlinked**: A small number of specific UI buttons (e.g., "VIEW INTELLIGENCE", "Approve for Budgeting", search input, `/gov/priority` route link).
-- **What the current priority should be**:
-  1. Replace `MockAIService` with genuine Gemini API integration for classification and recommendation generation.
-  2. Implement real browser geolocation and reverse geocoding on the citizen report page.
-  3. Wire up unlinked UI controls or hide them if not intended for current demo scope.
+- **What works now**:
+  - Fresh Git repository initialized and pushed to GitHub: [https://github.com/vatsshreeyansh-creator/JanDrishti-AI](https://github.com/vatsshreeyansh-creator/JanDrishti-AI) (`main` tracking `origin/main`).
+  - Frontend successfully built and deployed on Vercel: [https://jan-drishti-ai.vercel.app/](https://jan-drishti-ai.vercel.app/) (commit `a1f10fc`).
+  - Frontend API client dynamically configured using `VITE_API_URL` with `http://localhost:8000/api` local fallback (TypeScript check and `npm run build` verified).
+  - Local full-stack application works end-to-end (FastAPI + SQLite, polling, report submission, status updates, visual timeline, Leaflet map, and Recharts).
+- **What is simulated**: AI classification (keyword matching in `MockAIService`), priority formula breakdown (client-side multiplication), hotspot clustering (static district matching), citizens affected (random integers), project recommendations (templated strings), budget simulation (basic proportional split), risk alerts (seeded mock records), and impact metrics (seeded mock records).
+- **What is pending / broken**:
+  - FastAPI backend is **NOT publicly deployed yet**; public frontend is disconnected from the backend in production until the backend is live on Render.
+  - SQLite database on Render Free will be ephemeral (non-persistent across restarts/spin-downs).
+  - Unlinked UI controls (e.g., "VIEW INTELLIGENCE", "Approve for Budgeting", search input, `/gov/priority` route link).
+- **Immediate Next Steps (Sequence of Action)**:
+  1. Deploy FastAPI backend to Render as a Web Service.
+  2. Verify the public backend endpoint(s).
+  3. Set `VITE_API_URL` in Vercel Production to the deployed backend API base URL.
+  4. Redeploy/verify the frontend.
+  5. Test the complete public full-stack application.
+  6. Then continue with competition-focused improvements and real integrations.
 
 ---
 
