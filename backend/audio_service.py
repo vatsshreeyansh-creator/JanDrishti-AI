@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import re
@@ -5,19 +6,28 @@ from typing import Dict, Any
 
 try:
     from google import genai
-    from google.genai import types
-    from google.genai.errors import APIError
     GENAI_AVAILABLE = True
 except ImportError:
     genai = None
-    types = None
-    APIError = Exception
     GENAI_AVAILABLE = False
 
 
 class AudioTranscriptionService:
-    @staticmethod
-    def normalize_mime_type(raw_mime: str) -> str:
+    SUPPORTED_AUDIO_MIMES = {
+        "audio/webm": "audio/webm",
+        "audio/ogg": "audio/ogg",
+        "audio/wav": "audio/wav",
+        "audio/x-wav": "audio/wav",
+        "audio/mp4": "audio/mp4",
+        "audio/m4a": "audio/mp4",
+        "audio/aac": "audio/aac",
+        "audio/mpeg": "audio/mp3",
+        "audio/mp3": "audio/mp3",
+        "audio/flac": "audio/flac",
+    }
+
+    @classmethod
+    def normalize_mime_type(cls, raw_mime: str) -> str:
         """
         Normalize browser MIME types (e.g. 'audio/webm;codecs=opus')
         into clean MIME types recognized by Gemini.
@@ -26,24 +36,19 @@ class AudioTranscriptionService:
             return "audio/webm"
         
         base_mime = raw_mime.split(";")[0].strip().lower()
-        valid_mimes = {
-            "audio/webm": "audio/webm",
-            "audio/ogg": "audio/ogg",
-            "audio/wav": "audio/wav",
-            "audio/x-wav": "audio/wav",
-            "audio/mp4": "audio/mp4",
-            "audio/m4a": "audio/mp4",
-            "audio/aac": "audio/aac",
-            "audio/mpeg": "audio/mp3",
-            "audio/mp3": "audio/mp3",
-            "audio/flac": "audio/flac",
-        }
-        return valid_mimes.get(base_mime, "audio/webm")
+        if not base_mime:
+            return "audio/webm"
+
+        # If an explicit non-audio type was provided, flag as invalid
+        if not base_mime.startswith("audio/") and base_mime != "application/octet-stream":
+            raise ValueError(f"Unsupported audio format: '{raw_mime}'. Please upload a valid audio recording.")
+
+        return cls.SUPPORTED_AUDIO_MIMES.get(base_mime, "audio/webm")
 
     @classmethod
     def transcribe(cls, audio_bytes: bytes, mime_type: str = "audio/webm") -> Dict[str, Any]:
         """
-        Transcribe audio bytes using Google Gemini multimodal API.
+        Transcribe audio bytes using Google Gemini Interactions API.
         Returns a dict: {"text": str, "language": str}
         """
         if not audio_bytes or len(audio_bytes) == 0:
@@ -56,61 +61,88 @@ class AudioTranscriptionService:
                 "Backend audio transcription requires a valid Gemini API key."
             )
 
-        if not GENAI_AVAILABLE:
+        if not GENAI_AVAILABLE or genai is None:
             raise RuntimeError(
                 "The 'google-genai' library is not installed in the environment. "
                 "Please install google-genai to enable audio transcription."
             )
 
         normalized_mime = cls.normalize_mime_type(mime_type)
-        model_name = os.getenv("GEMINI_AUDIO_MODEL", "gemini-2.5-flash")
+        model_name = os.getenv("GEMINI_AUDIO_MODEL", "gemini-3.7-flash")
 
         client = genai.Client(api_key=api_key)
+        base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         prompt = (
-            "You are an expert audio transcription system for Indian citizen public grievances.\n"
-            "Analyze this recorded audio grievance and perform two tasks:\n"
+            "You are an expert speech-to-text transcription engine for Indian citizen public grievances.\n"
+            "Carefully listen to the provided audio recording and perform two tasks:\n"
             "1. Transcribe the spoken audio verbatim in its original spoken language and script "
-            "(e.g. Hindi in Devanagari, Bhojpuri in Devanagari, Magahi in Devanagari, English, etc.). "
-            "Do NOT summarize. Do NOT translate to English in the 'text' field. Preserve exact spoken words.\n"
-            "2. Detect the primary spoken language or dialect (e.g. 'Hindi', 'Bhojpuri', 'Magahi', 'English', etc.).\n\n"
-            "Return your response ONLY as a valid JSON object with the following schema:\n"
-            "{\n"
-            '  "text": "<verbatim original transcription>",\n'
-            '  "language": "<identified language or dialect>"\n'
-            "}"
+            "(for example: Hindi in Devanagari, Bhojpuri in Devanagari, Magahi in Devanagari, Tamil in Tamil script, English in Latin script, etc.). "
+            "Preserve all vernacular phrasing, colloquial expressions, and exact words spoken. "
+            "Do NOT translate into English in the transcription. "
+            "Do NOT summarize, paraphrase, or edit the citizen's words. "
+            "Do NOT perform grievance categorization, priority scoring, or any policy analysis.\n"
+            "2. Detect the primary spoken language or dialect (e.g. 'Hindi', 'Bhojpuri', 'Magahi', 'Tamil', 'English', etc.).\n\n"
+            "Output strictly according to the requested JSON schema with 'text' and 'language'."
         )
 
-        audio_part = types.Part.from_bytes(
-            data=audio_bytes,
-            mime_type=normalized_mime,
-        )
+        response_format = {
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "Verbatim transcription in original spoken language and script without translation or summarization.",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Primary detected language or dialect.",
+                    },
+                },
+                "required": ["text", "language"],
+            },
+        }
 
         try:
-            # We configure json output response where supported
-            config = types.GenerateContentConfig(
-                temperature=0.0,
-                response_mime_type="application/json",
-            )
-            response = client.models.generate_content(
+            interaction = client.interactions.create(
                 model=model_name,
-                contents=[prompt, audio_part],
-                config=config,
+                input=[
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "audio",
+                        "data": base64_audio,
+                        "mime_type": normalized_mime,
+                    },
+                ],
+                response_format=response_format,
             )
-        except Exception as e:
-            # If application/json response_mime_type is rejected by older model variant, retry standard call
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=[prompt, audio_part],
-                )
-            except Exception as inner_err:
-                raise RuntimeError(f"Gemini Audio API error: {str(inner_err)}") from inner_err
+        except Exception as err:
+            raise RuntimeError(f"Gemini Audio API error: {str(err)}") from err
 
-        raw_text = response.text or ""
-        cleaned = raw_text.strip()
-        
-        # Remove markdown code fences if model enclosed JSON in ```json ... ```
+        output_text = getattr(interaction, "output_text", None)
+        if not output_text and hasattr(interaction, "steps"):
+            steps = getattr(interaction, "steps", []) or []
+            for step in reversed(steps):
+                step_type = getattr(step, "type", None) or (step.get("type") if isinstance(step, dict) else None)
+                if step_type == "model_output":
+                    content = getattr(step, "content", None) or (step.get("content") if isinstance(step, dict) else [])
+                    parts = []
+                    for item in content:
+                        item_type = getattr(item, "type", None) or (item.get("type") if isinstance(item, dict) else None)
+                        if item_type == "text":
+                            t = getattr(item, "text", None) or (item.get("text") if isinstance(item, dict) else "")
+                            if t:
+                                parts.append(t)
+                    if parts:
+                        output_text = "".join(parts)
+                        break
+
+        if not output_text or not output_text.strip():
+            raise RuntimeError("Gemini Audio API returned an empty transcription response.")
+
+        cleaned = output_text.strip()
         if cleaned.startswith("```"):
             cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
             cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -118,15 +150,21 @@ class AudioTranscriptionService:
 
         try:
             parsed = json.loads(cleaned)
-            transcript_text = parsed.get("text", "").strip()
-            language = parsed.get("language", "Auto-Detected").strip()
-            return {
-                "text": transcript_text,
-                "language": language or "Auto-Detected"
-            }
+            if isinstance(parsed, dict):
+                transcript_text = str(parsed.get("text", "") or "").strip()
+                language = str(parsed.get("language", "") or "Auto-Detected").strip()
+            else:
+                transcript_text = cleaned
+                language = "Auto-Detected"
         except json.JSONDecodeError:
-            # Fallback if raw text returned directly
-            return {
-                "text": cleaned,
-                "language": "Auto-Detected"
-            }
+            transcript_text = cleaned
+            language = "Auto-Detected"
+
+        if not transcript_text:
+            raise RuntimeError("Gemini Audio API response did not contain transcription text.")
+
+        return {
+            "text": transcript_text,
+            "language": language or "Auto-Detected"
+        }
+

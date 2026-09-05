@@ -45,6 +45,8 @@ const MapplsMapView: React.FC<UnifiedMapViewProps> = ({
 }) => {
   const containerId = useId().replace(/:/g, '_') + '_mappls_map';
   const mapInstanceRef = useRef<any>(null);
+  const mapLoadedRef = useRef<boolean>(false);
+  const markersRef = useRef<any[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [sdkReady, setSdkReady] = useState(false);
@@ -152,16 +154,84 @@ const MapplsMapView: React.FC<UnifiedMapViewProps> = ({
     };
   }, [apiKey]);
 
-  // Effect 2: Initialize Map and Mount Markers once SDK is ready
+  // Synchronize markers on map
+  const syncMarkers = (map: any, currentMarkers: UnifiedMapMarker[]) => {
+    if (!map) return;
+
+    // 1. Remove previous markers
+    if (markersRef.current.length > 0) {
+      markersRef.current.forEach((m) => {
+        try {
+          if (typeof m.remove === 'function') {
+            m.remove();
+          } else if ((window as any).mappls?.remove) {
+            (window as any).mappls.remove({ map, layer: m });
+          }
+        } catch {
+          // ignore individual marker removal issues
+        }
+      });
+      markersRef.current = [];
+    }
+
+    // 2. Add current markers
+    const createdMarkers: any[] = [];
+    currentMarkers.forEach((marker) => {
+      const markerColor = marker.markerColor || (marker.status === 'Resolved' ? '#4a7c59' : '#c85a32');
+      const fillColor = marker.fillColor || markerColor;
+      const diameter = (marker.radius || 8) * 2;
+
+      const pinHtml = `
+        <div style="
+          width: ${diameter}px;
+          height: ${diameter}px;
+          border-radius: 50%;
+          background: ${fillColor};
+          border: 2px solid ${markerColor};
+          box-shadow: 0 0 10px rgba(0,0,0,0.5);
+          cursor: pointer;
+        "></div>
+      `;
+
+      const popupHtml = `
+        <div style="padding: 8px; font-family: system-ui, -apple-system, sans-serif; min-width: 200px; color: #1d2620;">
+          ${marker.category ? `<div style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #c85a32; letter-spacing: 0.05em;">${marker.category} ${marker.id ? '#' + marker.id : ''}</div>` : ''}
+          ${marker.title ? `<div style="font-size: 14px; font-weight: bold; margin-top: 2px; color: #111827;">${marker.title}</div>` : ''}
+          ${marker.description ? `<div style="font-size: 12px; margin-top: 4px; color: #4b5563; font-style: italic;">"${marker.description}"</div>` : ''}
+          ${marker.priorityScore !== undefined ? `<div style="font-size: 12px; font-weight: bold; color: #f59e0b; margin-top: 6px;">Priority Score: ${marker.priorityScore}/100</div>` : ''}
+          ${marker.citizensAffected !== undefined ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Affected Citizens: ${marker.citizensAffected.toLocaleString()}</div>` : ''}
+          ${marker.reportCount !== undefined ? `<div style="font-size: 11px; color: #6b7280;">Grievance Pings: ${marker.reportCount}</div>` : ''}
+          ${marker.status ? `<div style="font-size: 11px; font-weight: bold; color: ${marker.status === 'Resolved' ? '#16a34a' : '#c85a32'}; margin-top: 6px;">Status: ${marker.status}</div>` : ''}
+          ${marker.actionUrl ? `<a href="${marker.actionUrl}" style="display: block; margin-top: 8px; text-align: center; background: #5da673; color: #00381a; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-decoration: none;">${marker.actionText || 'VIEW DETAILS →'}</a>` : ''}
+        </div>
+      `;
+
+      try {
+        const m = new (window as any).mappls.Marker({
+          map: map,
+          position: { lat: marker.lat, lng: marker.lng },
+          html: pinHtml,
+          popupHtml: popupHtml,
+        });
+        if (m) createdMarkers.push(m);
+      } catch {
+        // ignore individual marker creation failure
+      }
+    });
+
+    markersRef.current = createdMarkers;
+  };
+
+  // Effect 2: Initialize Map instance ONCE when SDK is ready
   useEffect(() => {
     if (!sdkReady || !(window as any).mappls || !(window as any).mappls.Map) return;
+    if (mapInstanceRef.current) return; // Prevent duplicate instantiation
 
     try {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
+      const container = containerRef.current || document.getElementById(containerId);
+      if (!container) return;
 
-      const map = new (window as any).mappls.Map(containerId, {
+      const map = new (window as any).mappls.Map(container, {
         center: { lat: centerLat, lng: centerLng },
         zoom: zoom,
         zoomControl: true,
@@ -170,43 +240,18 @@ const MapplsMapView: React.FC<UnifiedMapViewProps> = ({
 
       mapInstanceRef.current = map;
 
-      markers.forEach((marker) => {
-        const markerColor = marker.markerColor || (marker.status === 'Resolved' ? '#4a7c59' : '#c85a32');
-        const fillColor = marker.fillColor || markerColor;
-        const diameter = (marker.radius || 8) * 2;
+      const onLoad = () => {
+        mapLoadedRef.current = true;
+        syncMarkers(map, markers);
+      };
 
-        const pinHtml = `
-          <div style="
-            width: ${diameter}px;
-            height: ${diameter}px;
-            border-radius: 50%;
-            background: ${fillColor};
-            border: 2px solid ${markerColor};
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            cursor: pointer;
-          "></div>
-        `;
-
-        const popupHtml = `
-          <div style="padding: 8px; font-family: system-ui, -apple-system, sans-serif; min-width: 200px; color: #1d2620;">
-            ${marker.category ? `<div style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #c85a32; letter-spacing: 0.05em;">${marker.category} ${marker.id ? '#' + marker.id : ''}</div>` : ''}
-            ${marker.title ? `<div style="font-size: 14px; font-weight: bold; margin-top: 2px; color: #111827;">${marker.title}</div>` : ''}
-            ${marker.description ? `<div style="font-size: 12px; margin-top: 4px; color: #4b5563; font-style: italic;">"${marker.description}"</div>` : ''}
-            ${marker.priorityScore !== undefined ? `<div style="font-size: 12px; font-weight: bold; color: #f59e0b; margin-top: 6px;">Priority Score: ${marker.priorityScore}/100</div>` : ''}
-            ${marker.citizensAffected !== undefined ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Affected Citizens: ${marker.citizensAffected.toLocaleString()}</div>` : ''}
-            ${marker.reportCount !== undefined ? `<div style="font-size: 11px; color: #6b7280;">Grievance Pings: ${marker.reportCount}</div>` : ''}
-            ${marker.status ? `<div style="font-size: 11px; font-weight: bold; color: ${marker.status === 'Resolved' ? '#16a34a' : '#c85a32'}; margin-top: 6px;">Status: ${marker.status}</div>` : ''}
-            ${marker.actionUrl ? `<a href="${marker.actionUrl}" style="display: block; margin-top: 8px; text-align: center; background: #5da673; color: #00381a; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-decoration: none;">${marker.actionText || 'VIEW DETAILS →'}</a>` : ''}
-          </div>
-        `;
-
-        new (window as any).mappls.Marker({
-          map: map,
-          position: { lat: marker.lat, lng: marker.lng },
-          html: pinHtml,
-          popupHtml: popupHtml,
-        });
-      });
+      if (typeof map.addListener === 'function') {
+        map.addListener('load', onLoad);
+      } else if (typeof map.on === 'function') {
+        map.on('load', onLoad);
+      } else {
+        onLoad();
+      }
     } catch (err: any) {
       setErrorState({
         code: 'INITIALIZATION_ERROR',
@@ -216,15 +261,60 @@ const MapplsMapView: React.FC<UnifiedMapViewProps> = ({
     }
 
     return () => {
-      if (mapInstanceRef.current && typeof mapInstanceRef.current.remove === 'function') {
+      // Clear markers
+      if (markersRef.current.length > 0) {
+        markersRef.current.forEach((m) => {
+          try {
+            if (typeof m.remove === 'function') m.remove();
+            else if ((window as any).mappls?.remove && mapInstanceRef.current) {
+              (window as any).mappls.remove({ map: mapInstanceRef.current, layer: m });
+            }
+          } catch {}
+        });
+        markersRef.current = [];
+      }
+
+      // Safe teardown of map instance on unmount
+      if (mapInstanceRef.current) {
         try {
-          mapInstanceRef.current.remove();
+          if (typeof mapInstanceRef.current.remove === 'function') {
+            mapInstanceRef.current.remove();
+          }
         } catch {
           // ignore cleanup errors
         }
+        mapInstanceRef.current = null;
       }
+      mapLoadedRef.current = false;
     };
-  }, [sdkReady, centerLat, centerLng, zoom, scrollWheelZoom]);
+  }, [sdkReady]);
+
+  // Effect 3: Gracefully update View (Center & Zoom) when props change without destroying map
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    try {
+      if (typeof map.setCenter === 'function') {
+        map.setCenter({ lat: centerLat, lng: centerLng });
+      } else if (typeof map.panTo === 'function') {
+        map.panTo({ lat: centerLat, lng: centerLng });
+      }
+
+      if (typeof map.setZoom === 'function') {
+        map.setZoom(zoom);
+      }
+    } catch {
+      // ignore view update errors while map is animating/loading
+    }
+  }, [centerLat, centerLng, zoom]);
+
+  // Effect 4: Gracefully synchronize markers when markers prop updates
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoadedRef.current) return;
+    syncMarkers(map, markers);
+  }, [markers]);
 
   // Error State: Display explicit MapmyIndia error with zero silent fallback
   if (errorState) {
