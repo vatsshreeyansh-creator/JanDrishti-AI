@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Mic, 
   Square, 
@@ -12,7 +12,10 @@ import {
   FileText,
   AlertCircle,
   Loader2,
-  X
+  X,
+  Search,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { submitReport, transcribeAudio } from '../../api/client';
 import { Link } from 'react-router-dom';
@@ -28,6 +31,88 @@ const CitizenReport = () => {
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('auto');
   const [selectedDistrict, setSelectedDistrict] = useState('Ranchi');
+  const [isDistrictOpen, setIsDistrictOpen] = useState(false);
+  const [districtSearch, setDistrictSearch] = useState('');
+
+  const districtDropdownRef = useRef<HTMLDivElement>(null);
+  const districtTriggerRef = useRef<HTMLButtonElement>(null);
+  const districtSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Filter districts prioritizing initial character matches as user types one by one
+  const filteredDistricts = useMemo(() => {
+    const q = districtSearch.trim().toLowerCase();
+    if (!q) return JHARKHAND_DISTRICT_NAMES;
+
+    const startsWithMatches: string[] = [];
+    const containsMatches: string[] = [];
+
+    for (const name of JHARKHAND_DISTRICT_NAMES) {
+      const lower = name.toLowerCase();
+      if (lower.startsWith(q)) {
+        startsWithMatches.push(name);
+      } else if (lower.includes(q)) {
+        containsMatches.push(name);
+      }
+    }
+
+    return [...startsWithMatches, ...containsMatches];
+  }, [districtSearch]);
+
+  // Handle click outside and auto-focus for searchable district dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        districtDropdownRef.current &&
+        !districtDropdownRef.current.contains(event.target as Node) &&
+        !districtTriggerRef.current?.contains(event.target as Node)
+      ) {
+        setIsDistrictOpen(false);
+      }
+    };
+
+    if (isDistrictOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      setTimeout(() => {
+        districtSearchInputRef.current?.focus();
+      }, 50);
+    } else {
+      setDistrictSearch('');
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDistrictOpen]);
+
+  // Highlight detected search characters in district names
+  const highlightMatch = (text: string, query: string) => {
+    const q = query.trim();
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <span className="text-[#5da673] font-bold underline decoration-[#5da673]/60 bg-[#5da673]/10 px-0.5 rounded">
+          {text.slice(idx, idx + q.length)}
+        </span>
+        {text.slice(idx + q.length)}
+      </>
+    );
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setIsDistrictOpen(false);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredDistricts.length > 0) {
+        setSelectedDistrict(filteredDistricts[0]);
+        setIsDistrictOpen(false);
+        setDistrictSearch('');
+      }
+    }
+  };
 
   // Real Microphone MediaRecorder state
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -558,8 +643,10 @@ const CitizenReport = () => {
       </div>
 
       {/* Main Intake Card */}
-      <div className="bg-[#151d19] border border-[#27342c] rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#5da673]/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-[#151d19] border border-[#27342c] rounded-3xl p-6 sm:p-10 shadow-2xl relative">
+        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#5da673]/5 rounded-full blur-3xl"></div>
+        </div>
 
         {/* Error notification banner */}
         {errorMessage && (
@@ -674,22 +761,119 @@ const CitizenReport = () => {
 
         {/* Telemetry metadata footer: GPS & Language */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
-          <div className="bg-[#1a241f] border border-[#27342c] rounded-xl p-3 flex items-center gap-2.5">
+          <div className="bg-[#1a241f] border border-[#27342c] rounded-xl p-3 flex items-center gap-2.5 relative">
             <MapPin className="w-4 h-4 text-[#5da673] shrink-0" />
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col w-full min-w-0">
               <span className="font-mono text-[9px] uppercase text-[#9ab0a2]">SELECT DISTRICT (JHARKHAND)</span>
-              <select
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="bg-transparent outline-none font-mono text-xs font-semibold text-[#e8ede9] cursor-pointer"
+              
+              {/* Searchable Dropdown Trigger */}
+              <button
+                ref={districtTriggerRef}
+                type="button"
+                onClick={() => setIsDistrictOpen(!isDistrictOpen)}
+                className="w-full flex items-center justify-between text-left font-mono text-xs font-semibold text-[#e8ede9] hover:text-[#8cd7a0] transition-colors cursor-pointer group pt-0.5"
+                title="Click to search from all 24 Jharkhand districts"
               >
-                {JHARKHAND_DISTRICT_NAMES.map((name) => (
-                  <option key={name} value={name} className="bg-[#151d19]">
-                    {name} District
-                  </option>
-                ))}
-              </select>
+                <span className="truncate">{selectedDistrict} District</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#9ab0a2] group-hover:text-[#8cd7a0] transition-transform duration-200 shrink-0 ml-1 ${isDistrictOpen ? 'rotate-180 text-[#5da673]' : ''}`} />
+              </button>
             </div>
+
+            {/* Custom Searchable Dropdown Menu with Search Bar at the Very Top */}
+            {isDistrictOpen && (
+              <div
+                ref={districtDropdownRef}
+                className="absolute bottom-full left-0 right-0 sm:left-0 sm:w-80 mb-2 z-50 bg-[#151d19] border border-[#27342c] rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col"
+              >
+                {/* Search Bar at the Very Top */}
+                <div className="p-2.5 bg-[#1a241f] border-b border-[#27342c] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase font-bold text-[#8cd7a0] tracking-wider flex items-center gap-1.5">
+                      <Search className="w-3 h-3 text-[#5da673]" />
+                      Search 24 Districts
+                    </span>
+                    <span className="font-mono text-[9px] text-[#9ab0a2] bg-[#151d19] px-2 py-0.5 rounded border border-[#27342c]">
+                      {filteredDistricts.length} / 24 Available
+                    </span>
+                  </div>
+
+                  {/* Character-by-character Detect Search Input */}
+                  <div className="relative flex items-center">
+                    <Search className="w-3.5 h-3.5 text-[#9ab0a2] absolute left-2.5 pointer-events-none" />
+                    <input
+                      ref={districtSearchInputRef}
+                      type="text"
+                      value={districtSearch}
+                      onChange={(e) => setDistrictSearch(e.target.value)}
+                      onKeyDown={handleSearchKeyDown}
+                      placeholder="Type district name (e.g. Ran, Bok, Dha)..."
+                      className="w-full bg-[#151d19] border border-[#27342c] focus:border-[#5da673] focus:ring-1 focus:ring-[#5da673] rounded-lg pl-8 pr-7 py-1.5 text-xs text-[#e8ede9] placeholder-[#9ab0a2]/50 font-mono outline-none transition-all"
+                    />
+                    {districtSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDistrictSearch('');
+                          districtSearchInputRef.current?.focus();
+                        }}
+                        className="absolute right-2 text-[#9ab0a2] hover:text-[#e8ede9] p-0.5 cursor-pointer"
+                        title="Clear search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* All 24 Districts Scrollable List */}
+                <div className="max-h-56 overflow-y-auto custom-scrollbar p-1.5 divide-y divide-[#27342c]/30">
+                  {filteredDistricts.length === 0 ? (
+                    <div className="py-6 px-3 text-center">
+                      <p className="font-mono text-xs text-[#ffb693]">No district matching "{districtSearch}"</p>
+                      <p className="font-mono text-[10px] text-[#9ab0a2] mt-1">Jharkhand comprises 24 official districts.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDistrictSearch('');
+                          districtSearchInputRef.current?.focus();
+                        }}
+                        className="mt-2 text-[11px] font-mono text-[#8cd7a0] hover:underline cursor-pointer"
+                      >
+                        Clear filter to show all 24 →
+                      </button>
+                    </div>
+                  ) : (
+                    filteredDistricts.map((name) => {
+                      const isSelected = selectedDistrict === name;
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDistrict(name);
+                            setIsDistrictOpen(false);
+                            setDistrictSearch('');
+                          }}
+                          className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#5da673]/15 text-[#8cd7a0] font-bold border border-[#5da673]/30'
+                              : 'text-[#e8ede9] hover:bg-[#1a241f] border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-[#5da673]' : 'bg-[#27342c]'}`} />
+                            <span className="truncate">
+                              {highlightMatch(name, districtSearch)} District
+                            </span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[#5da673] shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-[#1a241f] border border-[#27342c] rounded-xl p-3 flex items-center gap-2.5">
