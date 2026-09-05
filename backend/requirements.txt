@@ -2,7 +2,6 @@ fastapi
 uvicorn
 sqlalchemy
 pydantic
-deep-translator
-langdetect
-python-multipart
 google-genai
+python-multipart
+
