@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
+import { AppMapTileLayer } from '../../components/map/AppMapTileLayer';
 import 'leaflet/dist/leaflet.css';
 import { 
   AlertCircle, 
@@ -14,10 +15,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchReports } from '../../api/client';
-import { useTheme } from '../../context/ThemeContext';
-
 const CitizenHome = () => {
-  const { theme } = useTheme();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -163,10 +161,7 @@ const CitizenHome = () => {
               scrollWheelZoom={false}
               className="w-full h-full z-0"
             >
-              <TileLayer
-                attribution='&copy; <a href="https://carto.com/">Carto</a>'
-                url={theme === 'dark' ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
-              />
+              <AppMapTileLayer />
               {displayList.map(complaint => (
                 <CircleMarker
                   key={complaint.id}

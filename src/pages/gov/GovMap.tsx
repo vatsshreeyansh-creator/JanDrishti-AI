@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
+import { AppMapTileLayer } from '../../components/map/AppMapTileLayer';
 import 'leaflet/dist/leaflet.css';
 import { fetchHotspots } from '../../api/client';
 import { Layers, Users, Activity, Loader2, Sparkles, Filter } from 'lucide-react';
@@ -118,10 +119,7 @@ const GovMap = () => {
             scrollWheelZoom={true}
             className="w-full h-full z-0"
           >
-            <TileLayer
-              attribution='&copy; <a href="https://carto.com/">Carto</a>'
-              url={theme === 'dark' ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
-            />
+            <AppMapTileLayer />
             
             {filteredHotspots.map(hotspot => {
               const markerColor = getMarkerColor(hotspot.priority_score);
