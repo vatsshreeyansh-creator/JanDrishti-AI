@@ -10,7 +10,10 @@ export const fetchReports = async (limit = 1000, sortBy = 'priority') => {
   return res.json();
 };
 
-export const submitReport = async (text: string, location?: {lat: number, lng: number, name: string}) => {
+export const submitReport = async (
+  text: string, 
+  location?: { lat?: number; lng?: number; name?: string; district?: string; state?: string }
+) => {
   const res = await fetch(`${API_URL}/reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,7 +21,9 @@ export const submitReport = async (text: string, location?: {lat: number, lng: n
       text,
       lat: location?.lat,
       lng: location?.lng,
-      location_name: location?.name
+      location_name: location?.name,
+      district: location?.district,
+      state: location?.state,
     })
   });
 

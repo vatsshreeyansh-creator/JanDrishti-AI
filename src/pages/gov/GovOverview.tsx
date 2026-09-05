@@ -10,6 +10,8 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { UnifiedMapView } from '../../components/map/UnifiedMapView';
+import { JHARKHAND_CENTER, JHARKHAND_ZOOM } from '../../constants/jharkhandDistricts';
 
 const GovOverview = () => {
   const [stats, setStats] = useState<any>(null);
@@ -18,6 +20,29 @@ const GovOverview = () => {
   const [newSignal, setNewSignal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [feedSort, setFeedSort] = useState<'recent' | 'priority'>('recent');
+
+  const reportMarkers = feed
+    .filter((item) => typeof item.lat === 'number' && typeof item.lng === 'number')
+    .map((item) => {
+      const priority = item.priority_score || 50;
+      // Size proportional to intensity (radius from 7px to 22px)
+      const radius = Math.max(7, Math.min(22, Math.round(priority * 0.22)));
+      return {
+        id: `report-${item.id}`,
+        lat: item.lat,
+        lng: item.lng,
+        category: item.category,
+        title: `#JD-${item.id}: ${item.category} (${item.location_name || 'Jharkhand'})`,
+        description: item.translated_text || item.text,
+        priorityScore: priority,
+        status: item.status,
+        markerColor: '#ef4444',
+        fillColor: '#ef4444',
+        radius: radius,
+        actionUrl: '/gov/map',
+        actionText: 'VIEW FULL MAP →'
+      };
+    });
 
   useEffect(() => {
     const loadData = async () => {
@@ -292,52 +317,63 @@ const GovOverview = () => {
         {/* Right: Operational Panels & Quick Interventions (7 cols) */}
         <div className="lg:col-span-7 space-y-5">
           
-          {/* Spatial Map Deep Analytics Teaser */}
+          {/* Spatial Map Live Grievance Intelligence Panel */}
           <div className="bg-[#151d19] border border-[#27342c] rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 right-0 w-80 h-80 bg-[#5da673]/5 rounded-full blur-3xl pointer-events-none"></div>
 
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#5da673]"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse"></span>
                   <h3 className="font-display font-bold text-base text-[#e8ede9]">
-                    Geospatial Infrastructure Intelligence
+                    Jharkhand Grievance Telemetry Map
                   </h3>
                 </div>
-                <span className="font-mono text-xs text-[#ffb693] bg-[#773208]/20 border border-[#ffb693]/30 px-2 py-0.5 rounded">
-                  {stats.active_hotspots} Active Hotspots
+                <span className="font-mono text-xs text-[#ef4444] bg-[#ef4444]/15 border border-[#ef4444]/30 px-2.5 py-0.5 rounded-full font-bold">
+                  {reportMarkers.length} Active Problem Dots
                 </span>
               </div>
 
-              <p className="text-xs sm:text-sm text-[#9ab0a2] leading-relaxed mb-6">
-                JanDrishti automatically vectors multi-citizen reports into spatial polygons. Analyze infrastructural failure corridors across roads, water pipelines, and flood inundation zones.
+              <p className="text-xs sm:text-sm text-[#9ab0a2] leading-relaxed mb-3">
+                Red dots highlight registered citizen complaints across Jharkhand districts. Dot size is proportional to grievance intensity.
               </p>
 
-              <div className="grid grid-cols-3 gap-3 mb-6 font-mono text-xs">
-                <div className="bg-[#1a241f] border border-[#27342c] p-3 rounded-xl">
-                  <span className="text-[#9ab0a2] text-[10px] block">HOTSPOT DENSITY</span>
-                  <span className="font-bold text-[#e8ede9] text-base">{stats.active_hotspots} Clusters</span>
+              {/* Embedded Live Map */}
+              <div className="w-full h-80 rounded-xl overflow-hidden border border-[#27342c] relative my-3 shadow-inner">
+                <UnifiedMapView
+                  center={JHARKHAND_CENTER}
+                  zoom={JHARKHAND_ZOOM}
+                  scrollWheelZoom={false}
+                  className="w-full h-full"
+                  markers={reportMarkers}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-4 font-mono text-xs">
+                <div className="bg-[#1a241f] border border-[#27342c] p-2.5 rounded-xl">
+                  <span className="text-[#9ab0a2] text-[10px] block">PROBLEM PINS</span>
+                  <span className="font-bold text-[#ef4444] text-sm">{reportMarkers.length} Red Dots</span>
                 </div>
-                <div className="bg-[#1a241f] border border-[#27342c] p-3 rounded-xl">
-                  <span className="text-[#9ab0a2] text-[10px] block">CRITICAL ROADS</span>
-                  <span className="font-bold text-[#ffb693] text-base">Gaya-Bodhgaya</span>
+                <div className="bg-[#1a241f] border border-[#27342c] p-2.5 rounded-xl">
+                  <span className="text-[#9ab0a2] text-[10px] block">RADIUS SCALE</span>
+                  <span className="font-bold text-[#ffb693] text-sm">7px - 22px</span>
                 </div>
-                <div className="bg-[#1a241f] border border-[#27342c] p-3 rounded-xl">
-                  <span className="text-[#9ab0a2] text-[10px] block">AVG RESOLUTION</span>
-                  <span className="font-bold text-[#8cd7a0] text-base">36.4 Hours</span>
+                <div className="bg-[#1a241f] border border-[#27342c] p-2.5 rounded-xl">
+                  <span className="text-[#9ab0a2] text-[10px] block">JURISDICTION</span>
+                  <span className="font-bold text-[#8cd7a0] text-sm">24 Districts</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#27342c] flex items-center justify-between">
+            <div className="pt-3 border-t border-[#27342c] flex items-center justify-between">
               <span className="font-mono text-xs text-[#9ab0a2]">
-                Sovereign GIS CartoDB Layer Live
+                Sovereign GIS District Coordinates Live
               </span>
               <Link
                 to="/gov/map"
-                className="bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] px-5 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(93,166,115,0.3)]"
+                className="bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(93,166,115,0.3)]"
               >
-                Launch Spatial Intelligence Map <ArrowRight className="w-3.5 h-3.5" />
+                Launch Full Geospatial Map <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>

@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
 import { UnifiedMapView } from '../../components/map/UnifiedMapView';
-import { fetchHotspots } from '../../api/client';
+import { fetchHotspots, fetchReports } from '../../api/client';
 import { Loader2, Sparkles, Filter } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { JHARKHAND_CENTER, JHARKHAND_ZOOM } from '../../constants/jharkhandDistricts';
 
 const GovMap = () => {
   const { theme } = useTheme();
   const [hotspots, setHotspots] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('All');
 
   useEffect(() => {
-    fetchHotspots().then(data => {
-      setHotspots(data);
+    Promise.all([
+      fetchHotspots().catch(() => []),
+      fetchReports(1000, 'recent').catch(() => [])
+    ]).then(([hotspotsData, reportsData]) => {
+      setHotspots(hotspotsData || []);
+      setReports(reportsData || []);
       setLoading(false);
     }).catch(e => {
       console.error(e);
@@ -31,6 +37,46 @@ const GovMap = () => {
   const criticalCount = filteredHotspots.filter(h => h.priority_score >= 80).length;
   const warningCount = filteredHotspots.filter(h => h.priority_score >= 60 && h.priority_score < 80).length;
 
+  const hotspotMarkers = filteredHotspots.map(hotspot => ({
+    id: `hotspot-${hotspot.id}`,
+    lat: hotspot.lat,
+    lng: hotspot.lng,
+    category: hotspot.category,
+    title: hotspot.name,
+    priorityScore: hotspot.priority_score,
+    citizensAffected: hotspot.citizens_affected,
+    reportCount: hotspot.report_count,
+    actionUrl: '/gov/recommendations',
+    actionText: 'VIEW AI RECOMMENDATIONS →',
+    markerColor: getMarkerColor(hotspot.priority_score),
+    fillColor: getMarkerColor(hotspot.priority_score),
+    radius: Math.max(8, Math.min(24, (hotspot.citizens_affected || 500) / 1200)),
+  }));
+
+  const reportMarkers = reports
+    .filter(r => (categoryFilter === 'All' || r.category === categoryFilter) && typeof r.lat === 'number' && typeof r.lng === 'number')
+    .map(r => {
+      const priority = r.priority_score || 50;
+      const radius = Math.max(7, Math.min(22, Math.round(priority * 0.22)));
+      return {
+        id: `report-${r.id}`,
+        lat: r.lat,
+        lng: r.lng,
+        category: r.category,
+        title: `#JD-${r.id}: ${r.category} (${r.location_name || 'Jharkhand'})`,
+        description: r.translated_text || r.text,
+        priorityScore: priority,
+        status: r.status,
+        markerColor: '#ef4444',
+        fillColor: '#ef4444',
+        radius: radius,
+        actionUrl: '/gov',
+        actionText: 'VIEW IN GOV OVERVIEW →'
+      };
+    });
+
+  const combinedMarkers = [...hotspotMarkers, ...reportMarkers];
+
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-8.5rem)] flex flex-col space-y-4 animate-in fade-in duration-500 font-sans">
       
@@ -42,13 +88,13 @@ const GovMap = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-[#5da673] animate-pulse"></span>
               GIS DEMAND INTELLIGENCE
             </span>
-            <span className="font-mono text-xs text-[#56685c] dark:text-[#9ab0a2]">Gaya District Grid</span>
+            <span className="font-mono text-xs text-[#56685c] dark:text-[#9ab0a2]">Jharkhand 24-District Grid</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#1d2620] dark:text-[#e8ede9]">
             Geospatial Hotspots & Infrastructure Map
           </h1>
           <p className="text-xs text-[#56685c] dark:text-[#9ab0a2] mt-0.5">
-            Spatial failure clusters synthesized from multi-citizen voice telemetry.
+            Spatial failure clusters and citizen grievance telemetry across Jharkhand.
           </p>
         </div>
 
@@ -71,6 +117,11 @@ const GovMap = () => {
           </div>
 
           <div className="flex items-center gap-2 bg-white dark:bg-[#151d19] px-3 py-1.5 rounded-xl border border-[#d8e2dc] dark:border-[#27342c] font-mono text-xs">
+            <span className="flex items-center gap-1.5 text-[#ef4444] font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-ping"></span>
+              Grievances ({reportMarkers.length})
+            </span>
+            <span className="text-[#d8e2dc] dark:text-[#27342c]">|</span>
             <span className="flex items-center gap-1.5 text-[#c85a32] dark:text-[#ffb693] font-bold">
               <span className="w-2 h-2 rounded-full bg-[#c85a32] dark:bg-[#ffb693]"></span>
               Critical ({criticalCount})
@@ -96,11 +147,11 @@ const GovMap = () => {
             </h3>
           </div>
           <p className="text-[11px] text-[#56685c] dark:text-[#9ab0a2] leading-relaxed mb-3">
-            Marker radii scale with affected population size. Terracotta badges indicate P1 urgent clusters.
+            Red dots highlight registered citizen complaints scaled by intensity. Colored clusters represent multi-citizen hotspot zones.
           </p>
           <div className="font-mono text-[10px] text-[#4a7c59] dark:text-[#8cd7a0] flex items-center justify-between border-t border-[#d8e2dc] dark:border-[#27342c] pt-2">
-            <span>LAYERS: VECTOR GIS</span>
-            <span>NODE: IN-BH-04</span>
+            <span>REGION: JHARKHAND (24 D)</span>
+            <span>DOTS: {reportMarkers.length} ACTIVE</span>
           </div>
         </div>
 
@@ -111,25 +162,11 @@ const GovMap = () => {
           </div>
         ) : (
           <UnifiedMapView
-            center={[24.7914, 85.0002]} 
-            zoom={6} 
+            center={JHARKHAND_CENTER} 
+            zoom={JHARKHAND_ZOOM} 
             scrollWheelZoom={true}
             className="w-full h-full z-0"
-            markers={filteredHotspots.map(hotspot => ({
-              id: hotspot.id,
-              lat: hotspot.lat,
-              lng: hotspot.lng,
-              category: hotspot.category,
-              title: hotspot.name,
-              priorityScore: hotspot.priority_score,
-              citizensAffected: hotspot.citizens_affected,
-              reportCount: hotspot.report_count,
-              actionUrl: '/gov/recommendations',
-              actionText: 'VIEW AI RECOMMENDATIONS →',
-              markerColor: getMarkerColor(hotspot.priority_score),
-              fillColor: getMarkerColor(hotspot.priority_score),
-              radius: Math.max(8, Math.min(24, hotspot.citizens_affected / 1200)),
-            }))}
+            markers={combinedMarkers}
           />
         )}
       </div>

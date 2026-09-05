@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { submitReport, transcribeAudio } from '../../api/client';
 import { Link } from 'react-router-dom';
+import { JHARKHAND_DISTRICT_NAMES, getDistrictCoords } from '../../constants/jharkhandDistricts';
 
 const CitizenReport = () => {
   const [text, setText] = useState('');
@@ -26,6 +27,7 @@ const CitizenReport = () => {
   const [result, setResult] = useState<any>(null);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('auto');
+  const [selectedDistrict, setSelectedDistrict] = useState('Ranchi');
 
   // Real Microphone MediaRecorder state
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -189,7 +191,14 @@ const CitizenReport = () => {
     setErrorMessage(null);
     
     try {
-      const location = { lat: 24.7914, lng: 85.0002, name: 'Gaya, Bihar' };
+      const coords = getDistrictCoords(selectedDistrict);
+      const location = { 
+        lat: coords.lat, 
+        lng: coords.lng, 
+        name: `${selectedDistrict}, Jharkhand`,
+        district: selectedDistrict,
+        state: 'Jharkhand'
+      };
       const res = await submitReport(text, location);
       if (!res || typeof res.id === 'undefined') {
         throw new Error('Server did not return a valid confirmed report ID.');
@@ -368,7 +377,7 @@ const CitizenReport = () => {
                 </div>
                 <div>
                   <span className="text-[#9ab0a2] block text-[10px]">GEO-LOCATION</span>
-                  <span className="font-bold text-[#e8ede9]">{result.location_name || 'Gaya, Bihar'}</span>
+                  <span className="font-bold text-[#e8ede9]">{result.location_name || `${selectedDistrict}, Jharkhand`}</span>
                 </div>
                 <div>
                   <span className="text-[#9ab0a2] block text-[10px]">CURRENT STATUS</span>
@@ -667,11 +676,19 @@ const CitizenReport = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
           <div className="bg-[#1a241f] border border-[#27342c] rounded-xl p-3 flex items-center gap-2.5">
             <MapPin className="w-4 h-4 text-[#5da673] shrink-0" />
-            <div className="flex flex-col">
-              <span className="font-mono text-[9px] uppercase text-[#9ab0a2]">AUTO-GPS TELEMETRY</span>
-              <span className="font-mono text-xs font-semibold text-[#e8ede9]">
-                24.7914°N, 85.0002°E (Gaya Node)
-              </span>
+            <div className="flex flex-col w-full">
+              <span className="font-mono text-[9px] uppercase text-[#9ab0a2]">SELECT DISTRICT (JHARKHAND)</span>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="bg-transparent outline-none font-mono text-xs font-semibold text-[#e8ede9] cursor-pointer"
+              >
+                {JHARKHAND_DISTRICT_NAMES.map((name) => (
+                  <option key={name} value={name} className="bg-[#151d19]">
+                    {name} District
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
