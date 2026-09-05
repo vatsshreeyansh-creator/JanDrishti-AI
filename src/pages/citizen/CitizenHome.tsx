@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
-import { AppMapTileLayer } from '../../components/map/AppMapTileLayer';
-import 'leaflet/dist/leaflet.css';
+import { UnifiedMapView } from '../../components/map/UnifiedMapView';
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -155,41 +153,23 @@ const CitizenHome = () => {
           </div>
 
           <div className="rounded-xl overflow-hidden border border-[#d8e2dc] dark:border-[#27342c] h-[380px] relative bg-[#f5f6f0] dark:bg-[#08100c]">
-            <MapContainer 
+            <UnifiedMapView 
               center={[centerLat, centerLng]} 
               zoom={12} 
               scrollWheelZoom={false}
               className="w-full h-full z-0"
-            >
-              <AppMapTileLayer />
-              {displayList.map(complaint => (
-                <CircleMarker
-                  key={complaint.id}
-                  center={[complaint.lat || 24.7914, complaint.lng || 85.0002]}
-                  radius={8}
-                  pathOptions={{ 
-                    fillColor: complaint.status === 'Resolved' ? '#4a7c59' : '#c85a32', 
-                    color: complaint.status === 'Resolved' ? '#8cd7a0' : '#ffb693',
-                    weight: 2,
-                    fillOpacity: 0.7
-                  }}
-                >
-                  <Popup>
-                    <div className="p-1 space-y-1">
-                      <div className="font-mono text-[10px] uppercase text-[#c85a32] dark:text-[#ffb693] font-bold">
-                        {complaint.category} • #{complaint.id}
-                      </div>
-                      <div className="text-xs text-[#1d2620] dark:text-[#e8ede9] italic line-clamp-2">
-                        "{complaint.translated_text || complaint.text}"
-                      </div>
-                      <div className="text-[11px] font-mono font-bold text-[#4a7c59] dark:text-[#8cd7a0] pt-1">
-                        Status: {complaint.status}
-                      </div>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              ))}
-            </MapContainer>
+              markers={displayList.map(complaint => ({
+                id: complaint.id,
+                lat: complaint.lat || 24.7914,
+                lng: complaint.lng || 85.0002,
+                category: complaint.category,
+                description: complaint.translated_text || complaint.text,
+                status: complaint.status,
+                markerColor: complaint.status === 'Resolved' ? '#8cd7a0' : '#ffb693',
+                fillColor: complaint.status === 'Resolved' ? '#4a7c59' : '#c85a32',
+                radius: 8,
+              }))}
+            />
           </div>
         </div>
 

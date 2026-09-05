@@ -1,13 +1,12 @@
 /**
  * JanDrishti AI - Centralized Map Provider Configuration
  *
- * This module isolates all map provider configurations (MapmyIndia, CartoDB, OSM, Mapbox, Custom).
- * The rest of the application imports getMapTileConfig() or <AppMapTileLayer />,
- * ensuring zero coupling to any single map provider.
+ * Isolates all map provider configurations (MapmyIndia / Mappls Web SDK, CartoDB, OSM, Mapbox, Custom).
+ * The application consumes <UnifiedMapView />, ensuring zero coupling to any single map engine.
  *
  * Provider credentials are read from Vite environment variables and NEVER hardcoded:
  * - VITE_MAP_PROVIDER: 'mapmyindia' | 'carto' | 'osm' | 'mapbox' | 'custom' (defaults to 'mapmyindia')
- * - VITE_MAPMYINDIA_KEY / VITE_MAP_API_KEY: Provider API key
+ * - VITE_MAPMYINDIA_KEY / VITE_MAP_API_KEY: Mappls Web Maps Static Key / Access Token
  * - VITE_MAP_CUSTOM_TILE_URL: Optional custom tile URL template
  */
 
@@ -27,7 +26,7 @@ const MAP_PROVIDER = (import.meta.env.VITE_MAP_PROVIDER || 'mapmyindia').toLower
 const MAP_API_KEY = (import.meta.env.VITE_MAPMYINDIA_KEY || import.meta.env.VITE_MAP_API_KEY || '').trim();
 const CUSTOM_TILE_URL = (import.meta.env.VITE_MAP_CUSTOM_TILE_URL || '').trim();
 
-// Fallback tile configurations (CartoDB Voyager / Dark Matter & OSM)
+// Leaflet tile configurations for raster providers (CartoDB Voyager / Dark Matter & OSM)
 const CARTO_TILES = {
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -54,8 +53,21 @@ export const getActiveMapProvider = (): MapProvider => MAP_PROVIDER;
 export const hasMapApiKey = (): boolean => Boolean(MAP_API_KEY);
 
 /**
- * Returns the active tile layer configuration based on provider, credentials, and UI theme.
- * Gracefully falls back to Carto if the required key is missing, ensuring zero downtime or UI breakage.
+ * Returns the configured API key (never logs or exposes it).
+ */
+export const getMapApiKey = (): string => MAP_API_KEY;
+
+/**
+ * Generates the official Mappls Web Maps JS SDK v3.0 script URL.
+ */
+export const getMapplsSdkUrl = (key: string): string => {
+  return `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${encodeURIComponent(key)}`;
+};
+
+/**
+ * Returns the tile layer configuration for Leaflet-compatible providers.
+ * Note: MapmyIndia uses the official WebGL-based Mappls Web Maps JS SDK,
+ * not Leaflet raster tiles. No automatic fallback to Carto is performed.
  */
 export const getMapTileConfig = (theme: 'light' | 'dark' = 'dark'): MapTileConfig => {
   // 1. Custom tile URL specified
@@ -64,43 +76,25 @@ export const getMapTileConfig = (theme: 'light' | 'dark' = 'dark'): MapTileConfi
       provider: 'custom',
       url: CUSTOM_TILE_URL.replace('{apiKey}', MAP_API_KEY),
       attribution: '&copy; Custom Map Provider',
+      subdomains: ['a', 'b', 'c'],
       maxZoom: 19,
       isFallback: false,
     };
   }
 
-  // 2. MapmyIndia (Mappls)
+  // 2. MapmyIndia (Mappls Web Maps SDK is vector/WebGL, not Leaflet raster tiles)
   if (MAP_PROVIDER === 'mapmyindia') {
-    if (MAP_API_KEY) {
-      return {
-        provider: 'mapmyindia',
-        // Standard Mappls raster tile API endpoint for Leaflet tile layers
-        url: `https://apis.mappls.com/advancedmaps/v1/${MAP_API_KEY}/still_map/{z}/{x}/{y}.png`,
-        attribution: '&copy; <a href="https://www.mappls.com/" target="_blank" rel="noopener noreferrer">Mappls | MapmyIndia</a>',
-        maxZoom: 18,
-        isFallback: false,
-      };
-    }
-
-    // Key not supplied yet: warn once in development and fall back seamlessly to Carto
-    if (import.meta.env.DEV) {
-      console.info(
-        '[JanDrishti Map] VITE_MAPMYINDIA_KEY is not set. Falling back to Carto tiles. ' +
-        'Set VITE_MAPMYINDIA_KEY in your .env or Vercel environment to activate MapmyIndia.'
-      );
-    }
-
     return {
-      provider: 'carto',
-      url: theme === 'dark' ? CARTO_TILES.dark : CARTO_TILES.light,
-      attribution: CARTO_TILES.attribution,
-      subdomains: CARTO_TILES.subdomains,
-      maxZoom: CARTO_TILES.maxZoom,
-      isFallback: true,
+      provider: 'mapmyindia',
+      url: '',
+      attribution: '&copy; <a href="https://www.mappls.com/" target="_blank" rel="noopener noreferrer">Mappls | MapmyIndia</a>',
+      subdomains: ['a', 'b', 'c'],
+      maxZoom: 22,
+      isFallback: false,
     };
   }
 
-  // 3. Mapbox (if configured later)
+  // 3. Mapbox (Leaflet raster endpoint)
   if (MAP_PROVIDER === 'mapbox') {
     if (MAP_API_KEY) {
       const style = theme === 'dark' ? 'dark-v11' : 'streets-v12';
@@ -108,6 +102,7 @@ export const getMapTileConfig = (theme: 'light' | 'dark' = 'dark'): MapTileConfi
         provider: 'mapbox',
         url: `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/256/{z}/{x}/{y}@2x?access_token=${MAP_API_KEY}`,
         attribution: '&copy; <a href="https://www.mapbox.com/" target="_blank" rel="noopener noreferrer">Mapbox</a>',
+        subdomains: ['a', 'b', 'c'],
         maxZoom: 19,
         isFallback: false,
       };
@@ -126,7 +121,7 @@ export const getMapTileConfig = (theme: 'light' | 'dark' = 'dark'): MapTileConfi
     };
   }
 
-  // Default: Carto (theme-aware)
+  // 5. Carto (theme-aware)
   return {
     provider: 'carto',
     url: theme === 'dark' ? CARTO_TILES.dark : CARTO_TILES.light,

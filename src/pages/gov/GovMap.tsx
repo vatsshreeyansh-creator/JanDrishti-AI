@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
-import { AppMapTileLayer } from '../../components/map/AppMapTileLayer';
-import 'leaflet/dist/leaflet.css';
+import { UnifiedMapView } from '../../components/map/UnifiedMapView';
 import { fetchHotspots } from '../../api/client';
-import { Layers, Users, Activity, Loader2, Sparkles, Filter } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Loader2, Sparkles, Filter } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const GovMap = () => {
@@ -113,70 +110,27 @@ const GovMap = () => {
             <span>Loading Geospatial Telemetry...</span>
           </div>
         ) : (
-          <MapContainer 
+          <UnifiedMapView
             center={[24.7914, 85.0002]} 
             zoom={6} 
             scrollWheelZoom={true}
             className="w-full h-full z-0"
-          >
-            <AppMapTileLayer />
-            
-            {filteredHotspots.map(hotspot => {
-              const markerColor = getMarkerColor(hotspot.priority_score);
-              return (
-                <CircleMarker
-                  key={hotspot.id}
-                  center={[hotspot.lat, hotspot.lng]}
-                  radius={Math.max(8, Math.min(24, hotspot.citizens_affected / 1200))}
-                  pathOptions={{ 
-                    fillColor: markerColor, 
-                    color: markerColor,
-                    weight: 2,
-                    fillOpacity: 0.65
-                  }}
-                >
-                  <Popup>
-                    <div className="p-1 min-w-[220px] font-sans">
-                      <div className="font-mono text-[10px] uppercase tracking-wider text-[#ffb693] font-bold mb-1">
-                        {hotspot.category}
-                      </div>
-                      <div className="font-display font-bold text-base text-[#e8ede9] mb-3">
-                        {hotspot.name}
-                      </div>
-                      
-                      <div className="space-y-1.5 mb-4 font-mono text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#9ab0a2] flex items-center gap-1">
-                            <Activity className="w-3 h-3 text-[#5da673]"/> Priority Score:
-                          </span>
-                          <span className="font-bold text-[#ffb693]">{hotspot.priority_score}/100</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#9ab0a2] flex items-center gap-1">
-                            <Users className="w-3 h-3 text-[#5da673]"/> Affected Pop:
-                          </span>
-                          <span className="font-bold text-[#e8ede9]">{hotspot.citizens_affected.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#9ab0a2] flex items-center gap-1">
-                            <Layers className="w-3 h-3 text-[#5da673]"/> Grievance Pings:
-                          </span>
-                          <span className="font-bold text-[#e8ede9]">{hotspot.report_count}</span>
-                        </div>
-                      </div>
-                      
-                      <Link 
-                        to="/gov/recommendations"
-                        className="block text-center w-full bg-[#5da673] hover:bg-[#4a7c59] text-[#00381a] py-2 rounded-lg text-xs font-mono font-bold transition-colors"
-                      >
-                        VIEW AI RECOMMENDATIONS →
-                      </Link>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              );
-            })}
-          </MapContainer>
+            markers={filteredHotspots.map(hotspot => ({
+              id: hotspot.id,
+              lat: hotspot.lat,
+              lng: hotspot.lng,
+              category: hotspot.category,
+              title: hotspot.name,
+              priorityScore: hotspot.priority_score,
+              citizensAffected: hotspot.citizens_affected,
+              reportCount: hotspot.report_count,
+              actionUrl: '/gov/recommendations',
+              actionText: 'VIEW AI RECOMMENDATIONS →',
+              markerColor: getMarkerColor(hotspot.priority_score),
+              fillColor: getMarkerColor(hotspot.priority_score),
+              radius: Math.max(8, Math.min(24, hotspot.citizens_affected / 1200)),
+            }))}
+          />
         )}
       </div>
 
