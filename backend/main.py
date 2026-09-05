@@ -96,83 +96,76 @@ def create_report(report: schemas.ReportCreate, db: Session = Depends(database.g
     db.refresh(db_report)
     
     # Generate notification
-    try:
-        notif = models.Notification(
-            report_id=db_report.id,
-            message=f"Your report #JD-{db_report.id} has been received and is being analyzed."
-        )
-        db.add(notif)
-        db.commit()
-    except Exception as notif_err:
-        print(f"Warning: Failed to create notification for report #{db_report.id}: {notif_err}")
-
+    notif = models.Notification(
+        report_id=db_report.id,
+        message=f"Your report #JD-{db_report.id} has been received and is being analyzed."
+    )
+    db.add(notif)
+    db.commit()
+    
     # -------------------------------------------------------------
     # REAL-TIME HOTSPOT & CLUSTER GENERATION
     # -------------------------------------------------------------
-    try:
-        import random
+    import random
+    
+    # Check if a cluster exists for this category and district
+    cluster = db.query(models.IssueCluster).filter(
+        models.IssueCluster.category == db_report.category,
+        models.IssueCluster.district == db_report.district
+    ).first()
+
+    if cluster:
+        cluster.report_count += 1
+        db_report.cluster_id = cluster.id
+        db.commit()
         
-        # Check if a cluster exists for this category and district
-        cluster = db.query(models.IssueCluster).filter(
-            models.IssueCluster.category == db_report.category,
-            models.IssueCluster.district == db_report.district
-        ).first()
-
-        if cluster:
-            cluster.report_count += 1
-            db_report.cluster_id = cluster.id
+        # Update associated hotspot
+        if cluster.hotspot:
+            cluster.hotspot.citizens_affected += random.randint(100, 500)
+            cluster.hotspot.priority_score = min(100, cluster.hotspot.priority_score + 5)
             db.commit()
-            
-            # Update associated hotspot
-            if cluster.hotspot:
-                cluster.hotspot.citizens_affected += random.randint(100, 500)
-                cluster.hotspot.priority_score = min(100, cluster.hotspot.priority_score + 5)
-                db.commit()
-        else:
-            # Create new cluster
-            new_cluster = models.IssueCluster(
-                category=db_report.category,
-                district=db_report.district or "Unknown",
-                theme=f"{db_report.category} Issues",
-                report_count=1,
-                avg_severity_score=urgency_score
-            )
-            db.add(new_cluster)
-            db.commit()
-            db.refresh(new_cluster)
-            
-            db_report.cluster_id = new_cluster.id
-            db.commit()
-            
-            # Create new hotspot
-            new_hotspot = models.Hotspot(
-                cluster_id=new_cluster.id,
-                name=f"Emerging {db_report.category} Zone ({db_report.district or 'Local'})",
-                lat=db_report.lat or 20.0,
-                lng=db_report.lng or 78.0,
-                priority_score=priority,
-                citizens_affected=random.randint(200, 1000),
-                infrastructure_gap=random.randint(40, 90)
-            )
-            db.add(new_hotspot)
-            db.commit()
-            db.refresh(new_hotspot)
-            
-            # Create a new recommendation for the budget simulator
-            new_rec = models.Recommendation(
-                hotspot_id=new_hotspot.id,
-                title=f"Resolve {db_report.category} in {db_report.district or 'Local'}",
-                description=f"Automated AI recommendation based on recent citizen signals regarding {db_report.category.lower()}.",
-                est_cost_cr=round(random.uniform(1.0, 10.0), 2),
-                citizens_benefited=new_hotspot.citizens_affected + random.randint(500, 2000),
-                reasoning="Spike in citizen reports indicates urgent need for infrastructure intervention."
-            )
-            db.add(new_rec)
-            db.commit()
-    except Exception as cluster_err:
-        print(f"Warning: Issue clustering/hotspot update failed for report #{db_report.id}: {cluster_err}")
-
-    db.refresh(db_report)
+    else:
+        # Create new cluster
+        new_cluster = models.IssueCluster(
+            category=db_report.category,
+            district=db_report.district or "Unknown",
+            theme=f"{db_report.category} Issues",
+            report_count=1,
+            avg_severity_score=urgency_score
+        )
+        db.add(new_cluster)
+        db.commit()
+        db.refresh(new_cluster)
+        
+        db_report.cluster_id = new_cluster.id
+        db.commit()
+        
+        # Create new hotspot
+        new_hotspot = models.Hotspot(
+            cluster_id=new_cluster.id,
+            name=f"Emerging {db_report.category} Zone ({db_report.district or 'Local'})",
+            lat=db_report.lat or 20.0,
+            lng=db_report.lng or 78.0,
+            priority_score=priority,
+            citizens_affected=random.randint(200, 1000),
+            infrastructure_gap=random.randint(40, 90)
+        )
+        db.add(new_hotspot)
+        db.commit()
+        db.refresh(new_hotspot)
+        
+        # Create a new recommendation for the budget simulator
+        new_rec = models.Recommendation(
+            hotspot_id=new_hotspot.id,
+            title=f"Resolve {db_report.category} in {db_report.district or 'Local'}",
+            description=f"Automated AI recommendation based on recent citizen signals regarding {db_report.category.lower()}.",
+            est_cost_cr=round(random.uniform(1.0, 10.0), 2),
+            citizens_benefited=new_hotspot.citizens_affected + random.randint(500, 2000),
+            reasoning="Spike in citizen reports indicates urgent need for infrastructure intervention."
+        )
+        db.add(new_rec)
+        db.commit()
+    
     return db_report
 
 @app.get("/api/hotspots", response_model=List[schemas.HotspotResponse])

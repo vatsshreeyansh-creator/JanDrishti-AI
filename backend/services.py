@@ -31,6 +31,8 @@ class GeminiAIService:
 
         client = cls.get_client()
         model_name = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
+        if not model_name or "2.5" in model_name:
+            model_name = "gemini-3.7-flash"
 
         system_instruction = (
             "You are the JanDrishti AI grievance analysis engine for civic governance. "

@@ -69,6 +69,8 @@ class AudioTranscriptionService:
 
         normalized_mime = cls.normalize_mime_type(mime_type)
         model_name = os.getenv("GEMINI_AUDIO_MODEL", "gemini-3.7-flash")
+        if not model_name or "2.5" in model_name:
+            model_name = "gemini-3.7-flash"
 
         client = genai.Client(api_key=api_key)
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
