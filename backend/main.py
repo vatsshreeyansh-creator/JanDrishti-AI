@@ -60,7 +60,15 @@ def get_reports(limit: int = 1000, sort_by: str = "priority", db: Session = Depe
 
 @app.post("/api/reports", response_model=schemas.ReportResponse)
 def create_report(report: schemas.ReportCreate, db: Session = Depends(database.get_db)):
-    ai_result = services.MockAIService.analyze_report(report.text)
+    try:
+        ai_result = services.GeminiAIService.analyze_report(report.text)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=503, detail=str(re))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"AI grievance analysis service error: {str(e)}")
+
     
     urgency_score = services.PriorityEngine.map_severity_to_score(ai_result["urgency"])
     priority = services.PriorityEngine.calculate_priority(

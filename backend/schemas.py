@@ -1,6 +1,29 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
 from datetime import datetime
+
+class GrievanceAnalysis(BaseModel):
+    category: Literal[
+        "Road Infrastructure",
+        "Water Supply",
+        "Healthcare",
+        "Education",
+        "Digital Connectivity",
+        "General"
+    ] = Field(description="Primary sector of civic infrastructure grievance")
+    severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] = Field(
+        description="Physical infrastructural hazard / degradation level"
+    )
+    urgency: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] = Field(
+        description="Temporal dispatch immediacy (e.g., active flooding or live wire is CRITICAL)"
+    )
+    language: str = Field(description="Detected language/dialect, e.g., Hindi, Bhojpuri, Magahi, English, etc.")
+    translated_text: str = Field(
+        description="Faithful, administrative English translation/summary preserving the core grievance without alteration"
+    )
+    confidence: int = Field(
+        default=90, ge=0, le=100, description="Extraction and categorization confidence score (0 to 100)"
+    )
 
 class ReportCreate(BaseModel):
     text: str
