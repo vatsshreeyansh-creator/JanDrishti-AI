@@ -105,11 +105,10 @@ const GovOverview = () => {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#27342c] pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2 py-0.5 rounded-full bg-[#5da673]/15 border border-[#5da673]/30 text-[#8cd7a0] font-mono text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-full bg-[#5da673]/15 border border-[#5da673]/30 text-[#8cd7a0] font-mono text-[11px] uppercase tracking-wider flex items-center gap-1.5 font-bold">
               <span className="w-2 h-2 rounded-full bg-[#5da673] animate-pulse"></span>
-              NODE BIHAR-IN-04 ACTIVE
+              TELEMETRY NODE ACTIVE
             </span>
-            <span className="font-mono text-xs text-[#9ab0a2]">Gaya District Grid</span>
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-[#e8ede9]">
             Civic Command Center: Live Intelligence
@@ -279,7 +278,7 @@ const GovOverview = () => {
 
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#27342c] text-[11px] font-mono">
                       <span className="text-[#9ab0a2] flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#5da673]" /> {item.location_name || 'Gaya'}
+                        <MapPin className="w-3 h-3 text-[#5da673]" /> {item.location_name || 'Jharkhand'}
                       </span>
                       <span className="font-bold text-[#ffb693]">
                         Score: {item.priority_score || 70}/100
@@ -452,7 +451,7 @@ const GovOverview = () => {
                     DOCKET TRIAGE: #JD-{selectedReport.id}
                   </h2>
                   <span className="font-mono text-xs text-[#9ab0a2]">
-                    Ingestion Node: IN-BH-GAYA-04 • Ward 04
+                    {selectedReport.location_name ? `Location: ${selectedReport.location_name}` : 'District Ingestion Grid'}
                   </span>
                 </div>
               </div>
@@ -482,7 +481,7 @@ const GovOverview = () => {
               </div>
               <div>
                 <span className="text-[#9ab0a2] block text-[10px]">LOCATION</span>
-                <span className="font-bold text-[#e8ede9]">{selectedReport.location_name || 'Gaya'}</span>
+                <span className="font-bold text-[#e8ede9]">{selectedReport.location_name || 'Jharkhand'}</span>
               </div>
               <div>
                 <span className="text-[#9ab0a2] block text-[10px]">SEVERITY</span>

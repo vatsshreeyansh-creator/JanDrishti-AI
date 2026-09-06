@@ -27,13 +27,13 @@ const LiveTickerRibbon = () => {
             Live Redressal Stream:
           </span>
           <p className="text-xs truncate text-[#1d2620] dark:text-[#e8ede9]">
-            ✓ RWD Unit #12 patched 3.2km Gaya-Bodhgaya feeder road • Redressal confirmed via Sentinel-2 Satellite audit (Ward 09)
+            ✓ RWD Unit #12 patched 3.2km district feeder road • Redressal confirmed via Sentinel-2 Satellite audit (Ward 09)
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0 text-[11px] font-mono">
           <span className="flex items-center gap-1.5 text-[#56685c] dark:text-[#9ab0a2]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c85a32] dark:bg-[#ffb693] animate-ping"></span>
-            Ingestion Node: <strong className="text-[#1d2620] dark:text-[#e8ede9]">IN-BH-GAYA-04</strong>
+            Ingestion Node: <strong className="text-[#1d2620] dark:text-[#e8ede9]">JHARKHAND-GRID-01</strong>
           </span>
           <span className="text-[#d8e2dc] dark:text-[#27342c]">|</span>
           <span className="text-[#56685c] dark:text-[#9ab0a2]">
@@ -101,9 +101,6 @@ const CitizenNavbar = () => {
                   Citizen Portal
                 </span>
               </div>
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[#56685c] dark:text-[#9ab0a2]">
-                Constituency: Bodh Gaya (AC-229)
-              </span>
             </div>
 
             <div className="hidden xl:flex items-center gap-2 bg-[#f5f6f0] dark:bg-[#151d19] border border-[#d8e2dc] dark:border-[#27342c] px-3 py-1 rounded-full text-xs font-mono">

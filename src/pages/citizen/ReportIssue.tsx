@@ -301,9 +301,7 @@ const CitizenReport = () => {
 
   const samplePrompts = [
     { lang: 'Bhojpuri', text: 'हमनी के टोला में 3 दिन से पानी के पाइप फूटा बा, पूरा रास्ता जाम हो गइल बा।' },
-    { lang: 'Hindi', text: 'हमारे गांव की मुख्य सड़क बारिश में पूरी तरह बह गई है, गाड़ियां नहीं निकल पा रही हैं।' },
-    { lang: 'Magahi', text: 'गया-बोधगया मेन रोड पर पुलिया धंस गेलई है, तुरंत मरम्मत के जरूरत हे।' },
-    { lang: 'English', text: 'Severe culvert collapse and drainage overflow near Gaya Ward 04 primary school.' }
+    { lang: 'Hindi', text: 'हमारे गांव की मुख्य सड़क बारिश में पूरी तरह बह गई है, गाड़ियां नहीं निकल पा रही हैं।' }
   ];
 
   /* -------------------------------------------------------------
@@ -388,8 +386,6 @@ const CitizenReport = () => {
             </span>
             <span className="text-[#27342c]">/</span>
             <span className="text-[#9ab0a2]">ASR-NLP Synthesis Engine v4.2</span>
-            <span className="text-[#27342c]">/</span>
-            <span className="text-[#8cd7a0]">Gaya District Grid</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-[#8cd7a0] flex items-center gap-1">
@@ -605,13 +601,9 @@ const CitizenReport = () => {
                   <span className="text-[#9ab0a2]">Total Score:</span>
                   <span className="text-[#ffb693] font-bold">{score} / 100</span>
                 </div>
-                <div className="flex justify-between border-b border-[#27342c] pb-1.5">
+                <div className="flex justify-between">
                   <span className="text-[#9ab0a2]">SLA Response Window:</span>
                   <span className="text-[#5da673] font-bold">48 Hours Target</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#9ab0a2]">Escalation Authority:</span>
-                  <span className="text-[#e8ede9]">RWD Gaya Nodal Office</span>
                 </div>
               </div>
             </div>

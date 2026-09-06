@@ -42,7 +42,6 @@ const GovHotspots = () => {
               <Flame className="w-3.5 h-3.5" />
               HOTSPOT CONVERGENCE PIPELINE
             </span>
-            <span className="font-mono text-xs text-[#9ab0a2]">Gaya District Grid</span>
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-[#e8ede9]">
             Hotspot Intelligence Matrix

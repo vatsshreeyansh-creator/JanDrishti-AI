@@ -51,8 +51,6 @@ const GovBudget = () => {
         </div>
 
         <div className="flex items-center gap-3 font-mono text-xs text-[#8cd7a0] bg-[#151d19] border border-[#27342c] px-3.5 py-1.5 rounded-xl shrink-0">
-          <span>Active Nodes: <strong className="text-[#e8ede9]">Gaya District</strong></span>
-          <span className="text-[#27342c]">|</span>
           <span>SLA Window: <strong className="text-[#ffb693]">FY 2024-25</strong></span>
         </div>
       </header>

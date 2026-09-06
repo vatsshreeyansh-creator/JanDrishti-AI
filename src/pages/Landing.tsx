@@ -34,8 +34,6 @@ const Landing = () => {
           <span className="font-mono text-xs uppercase tracking-widest text-[#4a7c59] dark:text-[#8cd7a0] font-bold">
             Sovereign Portal v4.2
           </span>
-          <span className="text-[#d8e2dc] dark:text-[#27342c]">|</span>
-          <span className="font-mono text-xs text-[#56685c] dark:text-[#9ab0a2]">Bodh Gaya Grid</span>
         </div>
 
         {/* Light / Dark Mode Toggle Button */}

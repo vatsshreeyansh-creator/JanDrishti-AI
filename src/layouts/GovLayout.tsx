@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   ShieldAlert,
-  CheckCircle2,
   Sparkles,
   Sun,
   Moon
@@ -55,22 +54,6 @@ const Sidebar = () => {
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-[#ffb693]" /> : <Moon className="w-3.5 h-3.5 text-[#4a7c59]" />}
           </button>
-        </div>
-
-        {/* Authority Node Card */}
-        <div className="bg-[#f5f6f0] dark:bg-[#1a241f] border border-[#d8e2dc] dark:border-[#27342c] rounded-xl p-3 flex flex-col gap-1.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[#56685c] dark:text-[#9ab0a2]">Authority Node</span>
-            <span className="flex items-center gap-1 font-mono text-[10px] text-[#4a7c59] dark:text-[#8cd7a0] bg-[#eff1eb] dark:bg-[#5da673]/10 px-1.5 py-0.5 rounded border border-[#d8e2dc] dark:border-[#5da673]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#5da673] animate-pulse"></span>
-              LIVE
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-[#1d2620] dark:text-[#e8ede9]">
-            <span className="font-sans text-xs font-semibold truncate">Gaya District Magistrate</span>
-            <CheckCircle2 className="w-4 h-4 text-[#4a7c59] dark:text-[#8cd7a0] shrink-0" />
-          </div>
-          <div className="text-[10px] font-mono text-[#56685c] dark:text-[#9ab0a2] truncate">Jurisdiction: IN-BH-GAYA-04</div>
         </div>
 
         {/* Navigation */}

@@ -33,16 +33,16 @@ const CitizenHome = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const localLocation = reports.length > 0 ? reports[0].location_name : 'Gaya, Bihar';
+  const localLocation = reports.length > 0 ? reports[0].location_name : 'Jharkhand';
   const localIssues = reports.filter(r => !localLocation || r.location_name === localLocation || reports.length < 5);
   
   const displayList = localIssues.length > 0 ? localIssues : reports;
   const resolvedCount = displayList.filter(r => r.status === 'Resolved').length;
   const unresolved = displayList.length - resolvedCount;
 
-  // Center coordinate (Gaya default)
-  const centerLat = displayList.length > 0 && displayList[0].lat ? displayList[0].lat : 24.7914;
-  const centerLng = displayList.length > 0 && displayList[0].lng ? displayList[0].lng : 85.0002;
+  // Center coordinate (Jharkhand default)
+  const centerLat = displayList.length > 0 && displayList[0].lat ? displayList[0].lat : 23.6102;
+  const centerLng = displayList.length > 0 && displayList[0].lng ? displayList[0].lng : 85.2799;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-sans">
@@ -129,7 +129,6 @@ const CitizenHome = () => {
             <div className="text-2xl sm:text-3xl font-bold font-display text-[#1d2620] dark:text-[#e8ede9] mt-0.5">
               {loading ? '...' : displayList.length}
             </div>
-            <div className="text-[11px] font-mono text-[#56685c] dark:text-[#9ab0a2] mt-0.5">Constituency: Gaya Node</div>
           </div>
         </div>
 
@@ -148,7 +147,7 @@ const CitizenHome = () => {
               </h2>
             </div>
             <span className="font-mono text-[10px] text-[#4a7c59] dark:text-[#8cd7a0] bg-[#eff1eb] dark:bg-[#5da673]/10 border border-[#d8e2dc] dark:border-[#5da673]/30 px-2 py-0.5 rounded">
-              Gaya Sub-Ward Grid
+              Regional Grid
             </span>
           </div>
 
@@ -208,7 +207,7 @@ const CitizenHome = () => {
 
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[10px] font-mono text-[#56685c] dark:text-[#9ab0a2] flex items-center gap-1">
-                    <MapPin className="w-2.5 h-2.5 text-[#4a7c59] dark:text-[#5da673]" /> {issue.location_name || 'Gaya'}
+                    <MapPin className="w-2.5 h-2.5 text-[#4a7c59] dark:text-[#5da673]" /> {issue.location_name || 'Jharkhand'}
                   </span>
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                     issue.status === 'Resolved' 
